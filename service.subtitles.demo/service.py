@@ -43,8 +43,8 @@ def Search(item):
   listitem.setProperty( "hearing_imp", '{0}'.format("false").lower() ) # set to "true" if subtitle is for hearing impared
   
   
-  ## below arguments are optional, it can be used to pass any info needed in download function anything after "action=download&" will be sent
-  ## to addon once user clicks listed subtitle to downlaod
+  ## below arguments are optional, it can be used to pass any info needed in download function
+  ## anything after "action=download&" will be sent to addon once user clicks listed subtitle to downlaod
   url = "plugin://%s/?action=download&link=%s&ID=%s&filename=%s" % (__scriptid__,
                                                                     "some url for subtitle downlaod",
                                                                     "ID for the downlaod",

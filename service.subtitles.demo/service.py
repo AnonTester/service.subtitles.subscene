@@ -48,7 +48,7 @@ def Search(item):
   url = "plugin://%s/?action=download&link=%s&ID=%s&filename=%s" % (__scriptid__,
                                                                     "some url for subtitle downlaod",
                                                                     "ID for the downlaod",
-                                                                    "filename of teh subtitle")
+                                                                    "filename of the subtitle")
   ## add it to list, this can be done as many times as needed for all subtitles found
   xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=url,listitem=listitem,isFolder=False) 
 

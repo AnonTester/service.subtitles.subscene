@@ -1,4 +1,6 @@
-service.subtitles.demo
-======================
+service.subtitles.subscene
+==========================
 
-service.subtitles.demo
+Subscene.com subtitle service plugin for XBMC
+
+Forum thread: http://forum.xbmc.org/showthread.php?tid=184854

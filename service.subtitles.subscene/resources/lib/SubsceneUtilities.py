@@ -67,7 +67,6 @@ LANGUAGES = (
     ("Chinese (Traditional)", "17", "zh", "chi", "100", 30207),
     ("Chinese (Simplified)", "17", "zh", "chi", "100", 30207))
 
-language_info = {}
 subscene_languages = {
     'Chinese BG code': 'Chinese',
     'Brazillian Portuguese': 'Portuguese (Brazil)',
@@ -76,15 +75,13 @@ subscene_languages = {
 }
 
 
-def get_language_info(lang):
-    if len(language_info) == 0:
-        for lang in LANGUAGES:
-            language_info[lang[0]] = {'name': lang[0], '2let': lang[2], '3let': lang[3]}
+def get_language_info(language):
+    if language in subscene_languages:
+        language = subscene_languages[language]
 
-    if lang in subscene_languages:
-        lang = subscene_languages[lang]
-    if lang in language_info:
-        return language_info[lang]
+    for lang in LANGUAGES:
+        if lang[0] == language:
+            return {'name': lang[0], '2let': lang[2], '3let': lang[3]}
 
 
 def log(module, msg):

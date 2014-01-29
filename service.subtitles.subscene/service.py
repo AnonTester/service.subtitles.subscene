@@ -46,6 +46,9 @@ subtitle_pattern = "<a href=\"(/subtitles/[^\"]+)\">\s+<div class=\"visited\">\s
 <span>\s+([^\r\n\t]+)\s+</span>\s+</div>\s+</a>\s+</td>\s+<td class=\"[^\"]+\">\s+[^\r\n\t]+\s+</td>\s+<td class=\"([^\"]+)\">"
 # group(1) = downloadlink, group(2) = qualitycode, group(3) = language, group(4) = filename, group(5) = hearing impaired
 
+downloadlink_pattern = "...<a href=\"(.+?)\" rel=\"nofollow\" onclick=\"DownloadSubtitle"
+# group(1) = link
+
 
 def find_movie(content, title, year):
     url_found = None
@@ -164,7 +167,10 @@ def search_movie(title, year, languages):
 
 def search_tvshow(tvshow, season, episode, languages):
     tvshow = string.strip(tvshow)
-    search_string = tvshow + " - " + seasons[int(season)] + " Season"
+
+    # dots in words seem to trigger direct file search on subscene, so remove them (e.g. "Agents of S.H.I.E.L.D.")
+    search_string = re.sub(r'(\w)\.(?=\w)', r'\1', tvshow)
+    search_string += " - " + seasons[int(season)] + " Season"
 
     log(__name__, "Search tvshow = %s" % search_string)
     url = main_url + "/subtitles/title?q=" + urllib.quote_plus(search_string)
@@ -193,13 +199,75 @@ def search(item):
 
 def download(link, filename):
     subtitle_list = []
-    ## Cleanup temp dir, we recomend you download/unzip your subs in temp folder and
-    ## pass that to XBMC to copy and activate
-    if xbmcvfs.exists(__temp__):
-        shutil.rmtree(__temp__)
-    xbmcvfs.mkdirs(__temp__)
+    exts = [".srt", ".sub", ".txt", ".smi", ".ssa", ".ass" ]
 
-    subtitle_list.append("/Path/Of/Subtitle.srt")  # this can be url, local path or network path.
+    content, response_url = geturl(link)
+    match = re.compile(downloadlink_pattern).findall(content)
+    if match:
+        downloadlink = main_url + match[0]
+        log(__name__, "Downloadlink %s" % downloadlink)
+        viewstate = 0
+        previouspage = 0
+        subtitleid = 0
+        typeid = "zip"
+        filmid = 0
+
+        postparams = urllib.urlencode(
+            {'__EVENTTARGET': 's$lc$bcr$downloadLink', '__EVENTARGUMENT': '', '__VIEWSTATE': viewstate,
+             '__PREVIOUSPAGE': previouspage, 'subtitleId': subtitleid, 'typeId': typeid, 'filmId': filmid})
+
+        class MyOpener(urllib.FancyURLopener):
+            version = "User-Agent=Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.2.3) Gecko/20100401 Firefox/3.6.3 ( .NET CLR 3.5.30729)"
+
+        my_urlopener = MyOpener()
+        my_urlopener.addheader('Referer', link)
+        log(__name__, "Fetching subtitles using url '%s' with referer header '%s' and post parameters '%s'" % (
+            downloadlink, link, postparams))
+        response = my_urlopener.open(downloadlink, postparams)
+        local_tmp_file = os.path.join(__temp__, "subscene.xxx")
+        packed = False
+        if xbmcvfs.exists(__temp__):
+            shutil.rmtree(__temp__)
+        xbmcvfs.mkdirs(__temp__)
+        try:
+            log(__name__, "Saving subtitles to '%s'" % local_tmp_file)
+            local_file_handle = open(local_tmp_file, "wb")
+            local_file_handle.write(response.read())
+            local_file_handle.close()
+
+            #Check archive type (rar/zip/else) through the file header (rar=Rar!, zip=PK)
+            myfile = open(local_tmp_file, "rb")
+            myfile.seek(0)
+            if myfile.read(1) == 'R':
+                typeid = "rar"
+                packed = True
+                log(__name__, "Discovered RAR Archive")
+            else:
+                myfile.seek(0)
+                if myfile.read(1) == 'P':
+                    typeid = "zip"
+                    packed = True
+                    log(__name__, "Discovered ZIP Archive")
+                else:
+                    typeid = "srt"
+                    packed = False
+                    log(__name__, "Discovered a non-archive file")
+            myfile.close()
+            local_tmp_file = os.path.join(__temp__, "subscene." + typeid)
+            os.rename(os.path.join(__temp__, "subscene.xxx"), local_tmp_file)
+            log(__name__, "Saving to %s" % local_tmp_file)
+        except:
+            log(__name__, "Failed to save subtitle to %s" % local_tmp_file)
+
+        if packed:
+            xbmc.sleep(200)
+            xbmc.executebuiltin(('XBMC.Extract("%s","%s")' % (local_tmp_file, __temp__,)).encode('utf-8'), True)
+
+        for file in xbmcvfs.listdir(local_tmp_file)[1]:
+            file = os.path.join(__temp__, file)
+            if (os.path.splitext( file )[1] in exts):
+                log(__name__, "=== returning subtitle file %s" % file)
+                subtitle_list.append(file)
 
     return subtitle_list
 

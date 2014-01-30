@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*- 
+# -*- coding: utf-8 -*-
 
 import os
 import sys
@@ -13,6 +13,7 @@ import unicodedata
 import re
 import string
 import difflib
+import HTMLParser
 
 __addon__ = xbmcaddon.Addon()
 __author__ = __addon__.getAddonInfo('author')
@@ -52,11 +53,14 @@ downloadlink_pattern = "...<a href=\"(.+?)\" rel=\"nofollow\" onclick=\"Download
 
 def find_movie(content, title, year):
     url_found = None
+    h = HTMLParser.HTMLParser();
     for matches in re.finditer(movie_season_pattern, content, re.IGNORECASE | re.DOTALL):
-        log(__name__, "Found movie on search page: %s (%s)" % (matches.group(2), matches.group(3)))
-        if string.find(string.lower(matches.group(2)), string.lower(title)) > -1:
+        found_title = matches.group(2)
+        found_title = h.unescape(found_title)
+        log(__name__, "Found movie on search page: %s (%s)" % (found_title, matches.group(3)))
+        if string.find(string.lower(found_title), string.lower(title)) > -1:
             if matches.group(3) == year:
-                log(__name__, "Matching movie found on search page: %s (%s)" % (matches.group(2), matches.group(3)))
+                log(__name__, "Matching movie found on search page: %s (%s)" % (found_title, matches.group(3)))
                 url_found = matches.group(1)
                 break
     return url_found
@@ -67,13 +71,17 @@ def find_tv_show_season(content, tvshow, season):
     possible_matches = []
     all_tvshows = []
 
+    h = HTMLParser.HTMLParser();
     for matches in re.finditer(movie_season_pattern, content, re.IGNORECASE | re.DOTALL):
-        #log(__name__, "Found tv show season on search page: %s" % (matches.group(2).decode("utf-8")))
-        s = difflib.SequenceMatcher(None, string.lower(matches.group(2) + ' ' + matches.group(3)), string.lower(tvshow))
+        found_title = matches.group(2)
+        found_title = h.unescape(found_title)
+
+        log(__name__, "Found tv show season on search page: %s" % (found_title.decode("utf-8")))
+        s = difflib.SequenceMatcher(None, string.lower(found_title + ' ' + matches.group(3)), string.lower(tvshow))
         all_tvshows.append(matches.groups() + (s.ratio() * int(matches.group(4)),))
-        if string.find(string.lower(matches.group(2)), string.lower(tvshow) + " ") > -1:
-            if string.find(string.lower(matches.group(2)), string.lower(season)) > -1:
-                log(__name__, "Matching tv show season found on search page: %s" % (matches.group(2).decode("utf-8")))
+        if string.find(string.lower(found_title), string.lower(tvshow) + " ") > -1:
+            if string.find(string.lower(found_title), string.lower(season)) > -1:
+                log(__name__, "Matching tv show season found on search page: %s" % (found_title.decode("utf-8")))
                 possible_matches.append(matches.groups())
 
         if len(possible_matches) > 0:
@@ -96,7 +104,7 @@ def append_subtitle(item):
     listitem = xbmcgui.ListItem(label=item['lang']['name'],
                                 label2=item['filename'],
                                 iconImage=item['rating'],
-                                thumbnailImage=item['lang']['2let'] + ".gif")
+                                thumbnailImage=item['lang']['2let'])
 
     listitem.setProperty("sync", 'false')  # not supported
     listitem.setProperty("hearing_imp", ("false", "true")[int(item["hearing_imp"]) != 0])
@@ -133,8 +141,17 @@ def getallsubs(content, allowed_languages, search_string=""):
                                  'lang': language_info, 'hearing_imp': hearing_imp})
 
 
+def prepare_search_string(s):
+    # dots in words seem to trigger direct file search on subscene, so remove them (e.g. "Agents of S.H.I.E.L.D.")
+    s = string.strip(s)
+    s = string.strip(s,'.')
+    s = re.sub(r'(\w)\.(?=\w)', r'\1', s)
+    return s
+
+
 def search_movie(title, year, languages):
-    search_string = title
+    title = string.strip(title, '. ')
+    search_string = prepare_search_string(title)
 
     log(__name__, "Search movie = %s" % search_string)
     url = main_url + "/subtitles/title?q=" + urllib.quote_plus(search_string)
@@ -166,10 +183,8 @@ def search_movie(title, year, languages):
 
 
 def search_tvshow(tvshow, season, episode, languages):
-    tvshow = string.strip(tvshow)
-
-    # dots in words seem to trigger direct file search on subscene, so remove them (e.g. "Agents of S.H.I.E.L.D.")
-    search_string = re.sub(r'(\w)\.(?=\w)', r'\1', tvshow)
+    tvshow = string.strip(tvshow, '. ')
+    search_string = prepare_search_string(tvshow)
     search_string += " - " + seasons[int(season)] + " Season"
 
     log(__name__, "Search tvshow = %s" % search_string)

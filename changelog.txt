@@ -1,2 +1,6 @@
+0.0.2
+- improved title matching for some special chars in titles
+
+
 0.0.1
 - initial port from former XBMC subtitles plugin by amet

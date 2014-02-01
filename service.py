@@ -53,7 +53,7 @@ downloadlink_pattern = "...<a href=\"(.+?)\" rel=\"nofollow\" onclick=\"Download
 
 def find_movie(content, title, year):
     url_found = None
-    h = HTMLParser.HTMLParser();
+    h = HTMLParser.HTMLParser()
     for matches in re.finditer(movie_season_pattern, content, re.IGNORECASE | re.DOTALL):
         found_title = matches.group(2)
         found_title = h.unescape(found_title)
@@ -71,7 +71,7 @@ def find_tv_show_season(content, tvshow, season):
     possible_matches = []
     all_tvshows = []
 
-    h = HTMLParser.HTMLParser();
+    h = HTMLParser.HTMLParser()
     for matches in re.finditer(movie_season_pattern, content, re.IGNORECASE | re.DOTALL):
         found_title = matches.group(2)
         found_title = h.unescape(found_title)
@@ -143,8 +143,7 @@ def getallsubs(content, allowed_languages, search_string=""):
 
 def prepare_search_string(s):
     # dots in words seem to trigger direct file search on subscene, so remove them (e.g. "Agents of S.H.I.E.L.D.")
-    s = string.strip(s)
-    s = string.strip(s,'.')
+    s = string.strip(s, '. ')
     s = re.sub(r'(\w)\.(?=\w)', r'\1', s)
     return s
 
@@ -214,7 +213,7 @@ def search(item):
 
 def download(link, filename):
     subtitle_list = []
-    exts = [".srt", ".sub", ".txt", ".smi", ".ssa", ".ass" ]
+    exts = [".srt", ".sub", ".txt", ".smi", ".ssa", ".ass"]
 
     content, response_url = geturl(link)
     match = re.compile(downloadlink_pattern).findall(content)

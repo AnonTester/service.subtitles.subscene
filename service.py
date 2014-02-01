@@ -106,8 +106,8 @@ def append_subtitle(item):
                                 iconImage=item['rating'],
                                 thumbnailImage=item['lang']['2let'])
 
-    listitem.setProperty("sync", 'false')  # not supported
-    listitem.setProperty("hearing_imp", ("false", "true")[int(item["hearing_imp"]) != 0])
+    listitem.setProperty("sync",  'true' if item["sync"] else 'false')
+    listitem.setProperty("hearing_imp", 'true' if item["hearing_imp"] else 'false')
 
     ## below arguments are optional, it can be used to pass any info needed in download function
     ## anything after "action=download&" will be sent to addon once user clicks listed subtitle to downlaod
@@ -118,26 +118,31 @@ def append_subtitle(item):
     xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]), url=url, listitem=listitem, isFolder=False)
 
 
-def getallsubs(content, allowed_languages, search_string=""):
+def getallsubs(content, allowed_languages, filename="", search_string=""):
     for matches in re.finditer(subtitle_pattern, content, re.IGNORECASE | re.DOTALL):
         languagefound = matches.group(3)
         language_info = get_language_info(languagefound)
 
         if language_info and language_info['3let'] in allowed_languages:
             link = main_url + matches.group(1)
-            filename = matches.group(4)
+            subtitle_name = string.strip(matches.group(4))
             hearing_imp = (matches.group(5) == "a41")
             rating = '0'
             if matches.group(2) == "bad-icon":
                 continue
             if matches.group(2) == "positive-icon":
                 rating = '10'
+
+            sync = False
+            if filename != "" and string.lower(filename) == string.lower(subtitle_name):
+                sync = True
+
             if search_string != "":
                 if string.find(string.lower(filename), string.lower(search_string)) > -1:
-                    append_subtitle({'rating': rating, 'filename': filename, 'sync': False, 'link': link,
+                    append_subtitle({'rating': rating, 'filename': subtitle_name, 'sync': sync, 'link': link,
                                      'lang': language_info, 'hearing_imp': hearing_imp})
             else:
-                append_subtitle({'rating': rating, 'filename': filename, 'sync': False, 'link': link,
+                append_subtitle({'rating': rating, 'filename': subtitle_name, 'sync': sync, 'link': link,
                                  'lang': language_info, 'hearing_imp': hearing_imp})
 
 
@@ -148,7 +153,7 @@ def prepare_search_string(s):
     return s
 
 
-def search_movie(title, year, languages):
+def search_movie(title, year, languages, filename):
     title = string.strip(title, '. ')
     search_string = prepare_search_string(title)
 
@@ -164,7 +169,7 @@ def search_movie(title, year, languages):
             url = main_url + subspage_url
             content, response_url = geturl(url)
             if content is not None:
-                getallsubs(content, languages)
+                getallsubs(content, languages, filename)
         else:
             log(__name__, "Movie not found in list: %s" % title)
             if string.find(string.lower(title), "&") > -1:
@@ -176,12 +181,12 @@ def search_movie(title, year, languages):
                     url = main_url + subspage_url
                     content, response_url = geturl(url)
                     if content is not None:
-                        getallsubs(content, languages)
+                        getallsubs(content, languages, filename)
                 else:
                     log(__name__, "Movie not found in list: %s" % title)
 
 
-def search_tvshow(tvshow, season, episode, languages):
+def search_tvshow(tvshow, season, episode, languages, filename):
     tvshow = string.strip(tvshow, '. ')
     search_string = prepare_search_string(tvshow)
     search_string += " - " + seasons[int(season)] + " Season"
@@ -199,16 +204,17 @@ def search_tvshow(tvshow, season, episode, languages):
             content, response_url = geturl(url)
             if content is not None:
                 search_string = "s%#02de%#02d" % (int(season), int(episode))
-                getallsubs(content, languages, search_string)
+                getallsubs(content, languages, filename, search_string)
 
 
 def search(item):
-    log(__name__, "Search_subscene= '%s'" % item)
+    filename = os.path.splitext(os.path.basename(item['file_original_path']))[0]
+    log(__name__, "Search_subscene='%s', filename='%s'" % (item, filename))
 
     if len(item['tvshow']) == 0:
-        search_movie(item['title'], item['year'], item['3let_language'])
+        search_movie(item['title'], item['year'], item['3let_language'], filename)
     else:
-        search_tvshow(item['tvshow'], item['season'], item['episode'], item['3let_language'])
+        search_tvshow(item['tvshow'], item['season'], item['episode'], item['3let_language'], filename)
 
 
 def download(link, filename):

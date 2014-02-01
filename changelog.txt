@@ -1,6 +1,8 @@
+0.0.3
+- now shows sync flag, when subtitle name matches the video file name
+
 0.0.2
 - improved title matching for some special chars in titles
-
 
 0.0.1
 - initial port from former XBMC subtitles plugin by amet

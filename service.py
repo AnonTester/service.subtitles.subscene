@@ -40,28 +40,21 @@ seasons = seasons + ["Eleventh", "Twelfth", "Thirteenth", "Fourteenth", "Fifteen
 seasons = seasons + ["Twenty-first", "Twenty-second", "Twenty-third", "Twenty-fourth", "Twenty-fifth", "Twenty-sixth",
                      "Twenty-seventh", "Twenty-eighth", "Twenty-ninth"]
 
-movie_season_pattern = "<a href=\"(/subtitles/[^\"]*)\">([^<]+)\((\d{4})\)</a>\s+</div>\s+<div class=\"subtle\">\s+(\d+)"
-# group(1) = link, group(2) = movie_season_title,  group(3) = year, group(4) = num subtitles
-
-subtitle_pattern = "<a href=\"(/subtitles/[^\"]+)\">\s+<div class=\"visited\">\s+<span class=\"[^\"]+ (\w+-icon)\">\s+([^\r\n\t]+)\s+</span>\s+\
-<span>\s+([^\r\n\t]+)\s+</span>\s+</div>\s+</a>\s+</td>\s+<td class=\"[^\"]+\">\s+[^\r\n\t]+\s+</td>\s+<td class=\"([^\"]+)\">"
-# group(1) = downloadlink, group(2) = qualitycode, group(3) = language, group(4) = filename, group(5) = hearing impaired
-
-downloadlink_pattern = "...<a href=\"(.+?)\" rel=\"nofollow\" onclick=\"DownloadSubtitle"
-# group(1) = link
+movie_season_pattern = ("<a href=\"(?P<link>/subtitles/[^\"]*)\">(?P<title>[^<]+)\((?P<year>\d{4})\)</a>\s+"
+                        "</div>\s+<div class=\"subtle\">\s+(?P<numsubtitles>\d+)")
 
 
 def find_movie(content, title, year):
     url_found = None
     h = HTMLParser.HTMLParser()
     for matches in re.finditer(movie_season_pattern, content, re.IGNORECASE | re.DOTALL):
-        found_title = matches.group(2)
+        found_title = matches.group('title')
         found_title = h.unescape(found_title)
-        log(__name__, "Found movie on search page: %s (%s)" % (found_title, matches.group(3)))
+        log(__name__, "Found movie on search page: %s (%s)" % (found_title, matches.group('year')))
         if string.find(string.lower(found_title), string.lower(title)) > -1:
-            if matches.group(3) == year:
-                log(__name__, "Matching movie found on search page: %s (%s)" % (found_title, matches.group(3)))
-                url_found = matches.group(1)
+            if matches.group('year') == year:
+                log(__name__, "Matching movie found on search page: %s (%s)" % (found_title, matches.group('year')))
+                url_found = matches.group('link')
                 break
     return url_found
 
@@ -73,12 +66,12 @@ def find_tv_show_season(content, tvshow, season):
 
     h = HTMLParser.HTMLParser()
     for matches in re.finditer(movie_season_pattern, content, re.IGNORECASE | re.DOTALL):
-        found_title = matches.group(2)
+        found_title = matches.group('title')
         found_title = h.unescape(found_title)
 
         log(__name__, "Found tv show season on search page: %s" % (found_title.decode("utf-8")))
-        s = difflib.SequenceMatcher(None, string.lower(found_title + ' ' + matches.group(3)), string.lower(tvshow))
-        all_tvshows.append(matches.groups() + (s.ratio() * int(matches.group(4)),))
+        s = difflib.SequenceMatcher(None, string.lower(found_title + ' ' + matches.group('year')), string.lower(tvshow))
+        all_tvshows.append(matches.groups() + (s.ratio() * int(matches.group('numsubtitles')),))
         if string.find(string.lower(found_title), string.lower(tvshow) + " ") > -1:
             if string.find(string.lower(found_title), string.lower(season)) > -1:
                 log(__name__, "Matching tv show season found on search page: %s" % (found_title.decode("utf-8")))
@@ -114,23 +107,33 @@ def append_subtitle(item):
     url = "plugin://%s/?action=download&link=%s&filename=%s" % (__scriptid__,
                                                                 item['link'],
                                                                 item['filename'])
+    if 'find' in item:
+        url += "&find=%s" % item['find']
     ## add it to list, this can be done as many times as needed for all subtitles found
     xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]), url=url, listitem=listitem, isFolder=False)
 
 
 def getallsubs(content, allowed_languages, filename="", search_string=""):
+    subtitle_pattern = ("<a href=\"(?P<link>/subtitles/[^\"]+)\">\s+"
+                        "<div class=\"visited\">\s+"
+                        "<span class=\"[^\"]+ (?P<quality>\w+-icon)\">\s+(?P<language>[^\r\n\t]+)\s+</span>\s+"
+                        "<span>\s+(?P<filename>[^\r\n\t]+)\s+</span>\s+"
+                        "</div>\s+</a>\s+</td>\s+"
+                        "<td class=\"[^\"]+\">\s+(?P<numfiles>[^\r\n\t]+)\s+</td>\s+"
+                        "<td class=\"(?P<hiclass>[^\"]+)\">")
+
     for matches in re.finditer(subtitle_pattern, content, re.IGNORECASE | re.DOTALL):
-        languagefound = matches.group(3)
+        languagefound = matches.group('language')
         language_info = get_language_info(languagefound)
 
         if language_info and language_info['3let'] in allowed_languages:
-            link = main_url + matches.group(1)
-            subtitle_name = string.strip(matches.group(4))
-            hearing_imp = (matches.group(5) == "a41")
+            link = main_url + matches.group('link')
+            subtitle_name = string.strip(matches.group('filename'))
+            hearing_imp = (matches.group('hiclass') == "a41")
             rating = '0'
-            if matches.group(2) == "bad-icon":
+            if matches.group('quality') == "bad-icon":
                 continue
-            if matches.group(2) == "positive-icon":
+            if matches.group('quality') == "positive-icon":
                 rating = '10'
 
             sync = False
@@ -142,6 +145,9 @@ def getallsubs(content, allowed_languages, filename="", search_string=""):
                     log(__name__, search_string)
                     append_subtitle({'rating': rating, 'filename': subtitle_name, 'sync': sync, 'link': link,
                                      'lang': language_info, 'hearing_imp': hearing_imp})
+                elif int(matches.group('numfiles')) > 2:
+                    append_subtitle({'rating': rating, 'filename': subtitle_name, 'sync': sync, 'link': link,
+                                     'lang': language_info, 'hearing_imp': hearing_imp, 'find': search_string})
             else:
                 append_subtitle({'rating': rating, 'filename': subtitle_name, 'sync': sync, 'link': link,
                                  'lang': language_info, 'hearing_imp': hearing_imp})
@@ -214,6 +220,7 @@ def search_manual(searchstr, languages, filename):
     if content is not None:
         getallsubs(content, languages, filename)
 
+
 def search(item):
     filename = os.path.splitext(os.path.basename(item['file_original_path']))[0]
     log(__name__, "Search_subscene='%s', filename='%s'" % (item, filename))
@@ -225,9 +232,11 @@ def search(item):
     else:
         search_tvshow(item['tvshow'], item['season'], item['episode'], item['3let_language'], filename)
 
-def download(link, filename):
+
+def download(link, search_string=""):
     subtitle_list = []
     exts = [".srt", ".sub", ".txt", ".smi", ".ssa", ".ass"]
+    downloadlink_pattern = "...<a href=\"(.+?)\" rel=\"nofollow\" onclick=\"DownloadSubtitle"
 
     content, response_url = geturl(link)
     match = re.compile(downloadlink_pattern).findall(content)
@@ -245,7 +254,8 @@ def download(link, filename):
              '__PREVIOUSPAGE': previouspage, 'subtitleId': subtitleid, 'typeId': typeid, 'filmId': filmid})
 
         class MyOpener(urllib.FancyURLopener):
-            version = "User-Agent=Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.2.3) Gecko/20100401 Firefox/3.6.3 ( .NET CLR 3.5.30729)"
+            version = ("User-Agent=Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.2.3) "
+                       "Gecko/20100401 Firefox/3.6.3 ( .NET CLR 3.5.30729)")
 
         my_urlopener = MyOpener()
         my_urlopener.addheader('Referer', link)
@@ -293,7 +303,9 @@ def download(link, filename):
 
         for file in xbmcvfs.listdir(local_tmp_file)[1]:
             file = os.path.join(__temp__, file)
-            if (os.path.splitext( file )[1] in exts):
+            if (os.path.splitext(file)[1] in exts):
+                if search_string and string.find(string.lower(file), string.lower(search_string)) == -1:
+                    continue
                 log(__name__, "=== returning subtitle file %s" % file)
                 subtitle_list.append(file)
 
@@ -368,7 +380,7 @@ if params['action'] == 'search' or params['action'] == 'manualsearch':
 
 elif params['action'] == 'download':
     ## we pickup all our arguments sent from def Search()
-    subs = download(params["link"], params["filename"])
+    subs = download(params["link"], params["find"])
     ## we can return more than one subtitle for multi CD versions, for now we are still working out how to handle that
     ## in XBMC core
     for sub in subs:

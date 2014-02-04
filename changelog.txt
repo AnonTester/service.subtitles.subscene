@@ -1,3 +1,8 @@
+0.0.5
+- new feature: pick file from season pack for tv shows
+  - additionally to files with matching episode codes you can now also choose downloads, which contain more than 2 files
+  - from that archive only files with matching episode codes (SxxExx) for the current episode will be returned
+
 0.0.4
 - added ability to search for manually entered search string
 

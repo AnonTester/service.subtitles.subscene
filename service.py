@@ -138,7 +138,8 @@ def getallsubs(content, allowed_languages, filename="", search_string=""):
                 sync = True
 
             if search_string != "":
-                if string.find(string.lower(filename), string.lower(search_string)) > -1:
+                if string.find(string.lower(subtitle_name), string.lower(search_string)) > -1:
+                    log(__name__, search_string)
                     append_subtitle({'rating': rating, 'filename': subtitle_name, 'sync': sync, 'link': link,
                                      'lang': language_info, 'hearing_imp': hearing_imp})
             else:
@@ -147,18 +148,16 @@ def getallsubs(content, allowed_languages, filename="", search_string=""):
 
 
 def prepare_search_string(s):
-    # dots in words seem to trigger direct file search on subscene, so remove them (e.g. "Agents of S.H.I.E.L.D.")
-    s = string.strip(s, '. ')
-    s = re.sub(r'(\w)\.(?=\w)', r'\1', s)
+    s = string.strip(s)
     return s
 
 
 def search_movie(title, year, languages, filename):
-    title = string.strip(title, '. ')
+    title = string.strip(title)
     search_string = prepare_search_string(title)
 
     log(__name__, "Search movie = %s" % search_string)
-    url = main_url + "/subtitles/title?q=" + urllib.quote_plus(search_string)
+    url = main_url + "/subtitles/title?q=" + urllib.quote_plus(search_string) + '&r=true'
     content, response_url = geturl(url)
 
     if content is not None:
@@ -187,12 +186,12 @@ def search_movie(title, year, languages, filename):
 
 
 def search_tvshow(tvshow, season, episode, languages, filename):
-    tvshow = string.strip(tvshow, '. ')
+    tvshow = string.strip(tvshow)
     search_string = prepare_search_string(tvshow)
     search_string += " - " + seasons[int(season)] + " Season"
 
     log(__name__, "Search tvshow = %s" % search_string)
-    url = main_url + "/subtitles/title?q=" + urllib.quote_plus(search_string)
+    url = main_url + "/subtitles/title?q=" + urllib.quote_plus(search_string) + '&r=true'
     content, response_url = geturl(url)
 
     if content is not None:
@@ -207,15 +206,24 @@ def search_tvshow(tvshow, season, episode, languages, filename):
                 getallsubs(content, languages, filename, search_string)
 
 
+def search_manual(searchstr, languages, filename):
+    search_string = prepare_search_string(searchstr)
+    url = main_url + "/subtitles/release?q=" + urllib.quote_plus(search_string) + '&r=true'
+    content, response_url = geturl(url)
+
+    if content is not None:
+        getallsubs(content, languages, filename)
+
 def search(item):
     filename = os.path.splitext(os.path.basename(item['file_original_path']))[0]
     log(__name__, "Search_subscene='%s', filename='%s'" % (item, filename))
 
-    if len(item['tvshow']) == 0:
+    if item['mansearch']:
+        search_manual(item['mansearchstr'], item['3let_language'], filename)
+    elif len(item['tvshow']) == 0:
         search_movie(item['title'], item['year'], item['3let_language'], filename)
     else:
         search_tvshow(item['tvshow'], item['season'], item['episode'], item['3let_language'], filename)
-
 
 def download(link, filename):
     subtitle_list = []
@@ -318,10 +326,11 @@ def get_params():
 
 params = get_params()
 
-if params['action'] == 'search':
+if params['action'] == 'search' or params['action'] == 'manualsearch':
     item = {}
     item['temp'] = False
     item['rar'] = False
+    item['mansearch'] = False
     item['year'] = xbmc.getInfoLabel("VideoPlayer.Year")                             # Year
     item['season'] = str(xbmc.getInfoLabel("VideoPlayer.Season"))                    # Season
     item['episode'] = str(xbmc.getInfoLabel("VideoPlayer.Episode"))                  # Episode
@@ -329,6 +338,10 @@ if params['action'] == 'search':
     item['title'] = normalizeString(xbmc.getInfoLabel("VideoPlayer.OriginalTitle"))  # try to get original title
     item['file_original_path'] = urllib.unquote(xbmc.Player().getPlayingFile().decode('utf-8'))  # Full path
     item['3let_language'] = []
+
+    if 'searchstring' in params:
+        item['mansearch'] = True
+        item['mansearchstr'] = params['searchstring']
 
     for lang in urllib.unquote(params['languages']).decode('utf-8').split(","):
         item['3let_language'].append(xbmc.convertLanguage(lang, xbmc.ISO_639_2))

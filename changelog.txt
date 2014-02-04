@@ -1,3 +1,6 @@
+0.0.4
+- added ability to search for manually entered search string
+
 0.0.3
 - now shows sync flag, when subtitle name matches the video file name
 

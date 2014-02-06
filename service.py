@@ -380,7 +380,10 @@ if params['action'] == 'search' or params['action'] == 'manualsearch':
 
 elif params['action'] == 'download':
     ## we pickup all our arguments sent from def Search()
-    subs = download(params["link"], params["find"])
+    if 'find' in params:
+        subs = download(params["link"], params["find"])
+    else:
+        subs = download(params["link"])
     ## we can return more than one subtitle for multi CD versions, for now we are still working out how to handle that
     ## in XBMC core
     for sub in subs:

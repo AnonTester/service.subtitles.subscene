@@ -263,11 +263,14 @@ def download(link, search_string=""):
         log(__name__, "Fetching subtitles using url '%s' with referer header '%s' and post parameters '%s'" % (
             downloadlink, link, postparams))
         response = my_urlopener.open(downloadlink, postparams)
-        local_tmp_file = os.path.join(__temp__, "subscene.xxx")
-        packed = False
+
         if xbmcvfs.exists(__temp__):
             shutil.rmtree(__temp__)
         xbmcvfs.mkdirs(__temp__)
+
+        local_tmp_file = os.path.join(__temp__, "subscene.xxx")
+        packed = False
+
         try:
             log(__name__, "Saving subtitles to '%s'" % local_tmp_file)
             local_file_handle = open(local_tmp_file, "wb")
@@ -300,11 +303,14 @@ def download(link, search_string=""):
 
         if packed:
             xbmc.sleep(500)
+            log(__name__, 'XBMC.Extract("%s","%s")' % (local_tmp_file, __temp__,))
             xbmc.executebuiltin(('XBMC.Extract("%s","%s")' % (local_tmp_file, __temp__,)).encode('utf-8'), True)
 
+        log(__name__, "searching in folder: %s" % __temp__)
         for file in xbmcvfs.listdir(__temp__)[1]:
             file = os.path.join(__temp__, file)
-            if (os.path.splitext(file)[1] in exts):
+            log(__name__, "found file: %s" % file)
+            if os.path.splitext(file)[1] in exts:
                 if search_string and string.find(string.lower(file), string.lower(search_string)) == -1:
                     continue
                 log(__name__, "=== returning subtitle file %s" % file)

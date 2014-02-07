@@ -155,6 +155,7 @@ def getallsubs(content, allowed_languages, filename="", search_string=""):
 
 def prepare_search_string(s):
     s = string.strip(s)
+    s = re.sub(r'\(\d\d\d\d\)$', '', s)
     return s
 
 
@@ -298,10 +299,10 @@ def download(link, search_string=""):
             log(__name__, "Failed to save subtitle to %s" % local_tmp_file)
 
         if packed:
-            xbmc.sleep(200)
+            xbmc.sleep(500)
             xbmc.executebuiltin(('XBMC.Extract("%s","%s")' % (local_tmp_file, __temp__,)).encode('utf-8'), True)
 
-        for file in xbmcvfs.listdir(local_tmp_file)[1]:
+        for file in xbmcvfs.listdir(__temp__)[1]:
             file = os.path.join(__temp__, file)
             if (os.path.splitext(file)[1] in exts):
                 if search_string and string.find(string.lower(file), string.lower(search_string)) == -1:

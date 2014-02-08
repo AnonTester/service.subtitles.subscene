@@ -93,7 +93,6 @@ def find_tv_show_season(content, tvshow, season):
 
 
 def append_subtitle(item):
-    log(__name__, "append subtitle = %s" % item)
     listitem = xbmcgui.ListItem(label=item['lang']['name'],
                                 label2=item['filename'],
                                 iconImage=item['rating'],
@@ -122,6 +121,8 @@ def getallsubs(content, allowed_languages, filename="", search_string=""):
                         "<td class=\"[^\"]+\">\s+(?P<numfiles>[^\r\n\t]+)\s+</td>\s+"
                         "<td class=\"(?P<hiclass>[^\"]+)\">")
 
+    subtitles = []
+
     for matches in re.finditer(subtitle_pattern, content, re.IGNORECASE | re.DOTALL):
         languagefound = matches.group('language')
         language_info = get_language_info(languagefound)
@@ -142,20 +143,23 @@ def getallsubs(content, allowed_languages, filename="", search_string=""):
 
             if search_string != "":
                 if string.find(string.lower(subtitle_name), string.lower(search_string)) > -1:
-                    log(__name__, search_string)
-                    append_subtitle({'rating': rating, 'filename': subtitle_name, 'sync': sync, 'link': link,
+                    subtitles.append({'rating': rating, 'filename': subtitle_name, 'sync': sync, 'link': link,
                                      'lang': language_info, 'hearing_imp': hearing_imp})
                 elif int(matches.group('numfiles')) > 2:
-                    append_subtitle({'rating': rating, 'filename': subtitle_name, 'sync': sync, 'link': link,
+                    subtitles.append({'rating': rating, 'filename': subtitle_name, 'sync': sync, 'link': link,
                                      'lang': language_info, 'hearing_imp': hearing_imp, 'find': search_string})
             else:
-                append_subtitle({'rating': rating, 'filename': subtitle_name, 'sync': sync, 'link': link,
+                subtitles.append({'rating': rating, 'filename': subtitle_name, 'sync': sync, 'link': link,
                                  'lang': language_info, 'hearing_imp': hearing_imp})
+
+    subtitles.sort(key=lambda x: [not x['sync']])
+    for s in subtitles:
+        append_subtitle(s)
 
 
 def prepare_search_string(s):
     s = string.strip(s)
-    s = re.sub(r'\(\d\d\d\d\)$', '', s)
+    s = re.sub(r'\(\d\d\d\d\)$', '', s)  # remove year from title
     return s
 
 
@@ -243,7 +247,6 @@ def download(link, search_string=""):
     match = re.compile(downloadlink_pattern).findall(content)
     if match:
         downloadlink = main_url + match[0]
-        log(__name__, "Downloadlink %s" % downloadlink)
         viewstate = 0
         previouspage = 0
         subtitleid = 0
@@ -303,13 +306,10 @@ def download(link, search_string=""):
 
         if packed:
             xbmc.sleep(500)
-            log(__name__, 'XBMC.Extract("%s","%s")' % (local_tmp_file, __temp__,))
             xbmc.executebuiltin(('XBMC.Extract("%s","%s")' % (local_tmp_file, __temp__,)).encode('utf-8'), True)
 
-        log(__name__, "searching in folder: %s" % __temp__)
         for file in xbmcvfs.listdir(__temp__)[1]:
             file = os.path.join(__temp__, file)
-            log(__name__, "found file: %s" % file)
             if os.path.splitext(file)[1] in exts:
                 if search_string and string.find(string.lower(file), string.lower(search_string)) == -1:
                     continue

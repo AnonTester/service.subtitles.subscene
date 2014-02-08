@@ -1,3 +1,7 @@
+0.9.0
+- release candidate
+- "sync" flagged subtitles are now sorted first
+
 0.0.5
 - new feature: pick file from season pack for tv shows
   - additionally to files with matching episode codes you can now also choose downloads, which contain more than 2 files

@@ -69,27 +69,27 @@ def find_tv_show_season(content, tvshow, season):
         found_title = matches.group('title')
         found_title = h.unescape(found_title)
 
-        log(__name__, "Found tv show season on search page: %s" % (found_title.decode("utf-8")))
+        log(__name__, "Found tv show season on search page: %s" % found_title)
         s = difflib.SequenceMatcher(None, string.lower(found_title + ' ' + matches.group('year')), string.lower(tvshow))
         all_tvshows.append(matches.groups() + (s.ratio() * int(matches.group('numsubtitles')),))
         if string.find(string.lower(found_title), string.lower(tvshow) + " ") > -1:
             if string.find(string.lower(found_title), string.lower(season)) > -1:
-                log(__name__, "Matching tv show season found on search page: %s" % (found_title.decode("utf-8")))
+                log(__name__, "Matching tv show season found on search page: %s" % found_title)
                 possible_matches.append(matches.groups())
 
-        if len(possible_matches) > 0:
-            possible_matches = sorted(possible_matches, key=lambda x: -int(x[3]))
-            url_found = possible_matches[0][0]
-            log(__name__, "Selecting matching tv show with most subtitles: %s (%s)" % (
-                possible_matches[0][1].decode("utf-8"), possible_matches[0][3].decode("utf-8")))
-        else:
-            if len(all_tvshows) > 0:
-                all_tvshows = sorted(all_tvshows, key=lambda x: -int(x[4]))
-                url_found = all_tvshows[0][0]
-                log(__name__, "Selecting tv show with highest fuzzy string score: %s (score: %s subtitles: %s)" % (
-                    all_tvshows[0][1].decode("utf-8"), all_tvshows[0][4], all_tvshows[0][3].decode("utf-8")))
+    if len(possible_matches) > 0:
+        possible_matches = sorted(possible_matches, key=lambda x: -int(x[3]))
+        url_found = possible_matches[0][0]
+        log(__name__, "Selecting matching tv show with most subtitles: %s (%s)" % (
+            possible_matches[0][1], possible_matches[0][3]))
+    else:
+        if len(all_tvshows) > 0:
+            all_tvshows = sorted(all_tvshows, key=lambda x: -int(x[4]))
+            url_found = all_tvshows[0][0]
+            log(__name__, "Selecting tv show with highest fuzzy string score: %s (score: %s subtitles: %s)" % (
+                all_tvshows[0][1], all_tvshows[0][4], all_tvshows[0][3]))
 
-        return url_found
+    return url_found
 
 
 def append_subtitle(item):

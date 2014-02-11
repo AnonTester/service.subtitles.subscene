@@ -228,7 +228,7 @@ def search_manual(searchstr, languages, filename):
 
 def search(item):
     filename = os.path.splitext(os.path.basename(item['file_original_path']))[0]
-    log(__name__, "Search_subscene='%s', filename='%s'" % (item, filename))
+    log(__name__, "Search_subscene='%s', filename='%s', addon_version=%s" % (item, filename, __version__))
 
     if item['mansearch']:
         search_manual(item['mansearchstr'], item['3let_language'], filename)

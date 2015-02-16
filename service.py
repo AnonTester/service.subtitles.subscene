@@ -313,7 +313,10 @@ def download(link, search_string=""):
         response = my_urlopener.open(downloadlink, postparams)
 
         if xbmcvfs.exists(__temp__):
-            shutil.rmtree(__temp__)
+            if sys.platform.startswith('win'):
+                shutil.rmtree(__temp__)
+            else:
+                shutil.rmtree(__temp__.encode('utf-8'))
         xbmcvfs.mkdirs(__temp__)
 
         local_tmp_file = os.path.join(__temp__, "subscene.xxx")
@@ -354,7 +357,10 @@ def download(link, search_string=""):
             xbmc.executebuiltin(('XBMC.Extract("%s","%s")' % (local_tmp_file, __temp__,)).encode('utf-8'), True)
 
         for file in xbmcvfs.listdir(__temp__)[1]:
-            file = os.path.join(__temp__, file)
+            if sys.platform.startswith('win'):
+                file = os.path.join(__temp__, file)
+            else:
+                file = os.path.join(__temp__.encode('utf-8'), file)
             if os.path.splitext(file)[1] in exts:
                 if search_string and string.find(string.lower(file), string.lower(search_string)) == -1:
                     continue

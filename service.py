@@ -30,11 +30,9 @@ __temp__ = unicode(xbmc.translatePath(os.path.join(__profile__, 'temp')), 'utf-8
 
 
 if xbmcvfs.exists(__temp__):
-    if sys.platform.startswith('win'):
-        shutil.rmtree(__temp__)
-    else:
-        shutil.rmtree(__temp__.encode('utf-8'))
+    shutil.rmtree(__temp__.encode(sys.getfilesystemencoding()))
 xbmcvfs.mkdirs(__temp__)
+
 
 sys.path.append(__resource__)
 
@@ -313,10 +311,7 @@ def download(link, search_string=""):
         response = my_urlopener.open(downloadlink, postparams)
 
         if xbmcvfs.exists(__temp__):
-            if sys.platform.startswith('win'):
-                shutil.rmtree(__temp__)
-            else:
-                shutil.rmtree(__temp__.encode('utf-8'))
+            shutil.rmtree(__temp__.encode(sys.getfilesystemencoding()))
         xbmcvfs.mkdirs(__temp__)
 
         local_tmp_file = os.path.join(__temp__, "subscene.xxx")

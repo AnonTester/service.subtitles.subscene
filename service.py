@@ -29,7 +29,7 @@ __temp__ = unicode(xbmc.translatePath(os.path.join(__profile__, 'temp', '')), 'u
 
 sys.path.append(__resource__)
 
-from SubsceneUtilities import log, geturl, get_language_info, get_language_codes
+from SubsceneUtilities import log, geturl, get_language_codes, subscene_languages, get_episode_pattern
 
 main_url = "http://subscene.com"
 
@@ -161,13 +161,13 @@ def append_subtitle(item):
     url = "plugin://%s/?action=download&link=%s&filename=%s" % (__scriptid__,
                                                                 item['link'],
                                                                 item['filename'])
-    if 'find' in item:
-        url += "&find=%s" % item['find']
+    if 'episode' in item:
+        url += "&episode=%s" % item['episode']
     # add it to list, this can be done as many times as needed for all subtitles found
     xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]), url=url, listitem=listitem, isFolder=False)
 
 
-def getallsubs(url, allowed_languages, filename="", search_string=""):
+def getallsubs(url, allowed_languages, filename="", episode=""):
     subtitle_pattern = ("<td class=\"a1\">\s+<a href=\"(?P<link>/subtitles/[^\"]+)\">\s+"
                         "<span class=\"[^\"]+ (?P<quality>\w+-icon)\">\s+(?P<language>[^\r\n\t]+)\s+</span>\s+"
                         "<span>\s+(?P<filename>[^\r\n\t]+)\s+</span>\s+"
@@ -177,24 +177,28 @@ def getallsubs(url, allowed_languages, filename="", search_string=""):
                         "(?:.*?)<td class=\"a6\">\s+<div>\s+(?P<comment>[^\"]+)&nbsp;\s*</div>")
 
     codes = get_language_codes(allowed_languages)
-    if len(codes) == 1 or len(codes) == 2 or len(codes) == 3:
-        log(__name__, 'LanguageFilter='+','.join(codes))
-        content, response_url = geturl(url, 'LanguageFilter='+','.join(codes))
-    else:
-        content, response_url = geturl(url)
+    if len(codes) < 1:
+        xbmc.executebuiltin((u'Notification(%s,%s)' % (__scriptname__, __language__(32004))).encode('utf-8'))
+        return
+    log(__name__, 'LanguageFilter='+','.join(codes))
+    content, response_url = geturl(url, 'LanguageFilter='+','.join(codes))
 
     if content is None:
         return
 
     subtitles = []
     h = HTMLParser.HTMLParser()
+    episode_regex = None
+    if episode != "":
+        episode_regex = re.compile(get_episode_pattern(episode), re.IGNORECASE)
+        log(__name__, "regex: %s" % get_episode_pattern(episode))
 
     for matches in re.finditer(subtitle_pattern, content, re.IGNORECASE | re.DOTALL):
         numfiles = 1
         if matches.group('numfiles') != "":
             numfiles = int(matches.group('numfiles'))
         languagefound = matches.group('language')
-        language_info = get_language_info(languagefound)
+        language_info = subscene_languages[languagefound]
 
         if language_info and language_info['3let'] in allowed_languages:
             link = main_url + matches.group('link')
@@ -212,15 +216,16 @@ def getallsubs(url, allowed_languages, filename="", search_string=""):
             if filename != "" and string.lower(filename) == string.lower(subtitle_name):
                 sync = True
 
-            if search_string != "":
-                if string.find(string.lower(subtitle_name), string.lower(search_string)) > -1:
+            if episode != "":
+                log(__name__, "match: "+subtitle_name)
+                if episode_regex.search(subtitle_name):
                     subtitles.append({'rating': rating, 'filename': subtitle_name, 'sync': sync, 'link': link,
                                       'lang': language_info, 'hearing_imp': hearing_imp, 'comment': comment})
                 elif numfiles > 2:
                     subtitle_name = subtitle_name + ' ' + (__language__(32001) % int(matches.group('numfiles')))
                     subtitles.append({'rating': rating, 'filename': subtitle_name, 'sync': sync, 'link': link,
                                       'lang': language_info, 'hearing_imp': hearing_imp, 'comment': comment,
-                                      'find': search_string})
+                                      'episode': episode})
             else:
                 subtitles.append({'rating': rating, 'filename': subtitle_name, 'sync': sync, 'link': link,
                                   'lang': language_info, 'hearing_imp': hearing_imp, 'comment': comment})
@@ -232,16 +237,15 @@ def getallsubs(url, allowed_languages, filename="", search_string=""):
 
 def prepare_search_string(s):
     s = string.strip(s)
-    s = re.sub(r'\(\d\d\d\d\)$', '', s)  # remove year from title
+    s = re.sub(r'\s+\(\d\d\d\d\)$', '', s)  # remove year from title
     return s
 
 
 def search_movie(title, year, languages, filename):
-    title = string.strip(title)
-    search_string = prepare_search_string(title)
+    title = prepare_search_string(title)
 
-    log(__name__, "Search movie = %s" % search_string)
-    url = main_url + "/subtitles/title?q=" + urllib.quote_plus(search_string) + '&r=true'
+    log(__name__, "Search movie = %s" % title)
+    url = main_url + "/subtitles/title?q=" + urllib.quote_plus(title) + '&r=true'
     content, response_url = geturl(url)
 
     if content is not None:
@@ -266,9 +270,8 @@ def search_movie(title, year, languages, filename):
 
 
 def search_tvshow(tvshow, season, episode, languages, filename):
-    tvshow = string.strip(tvshow)
-    search_string = prepare_search_string(tvshow)
-    search_string += " - " + seasons[int(season)] + " Season"
+    tvshow = prepare_search_string(tvshow)
+    search_string = tvshow + " - " + seasons[int(season)] + " Season"
 
     log(__name__, "Search tvshow = %s" % search_string)
     url = main_url + "/subtitles/title?q=" + urllib.quote_plus(search_string) + '&r=true'
@@ -280,8 +283,8 @@ def search_tvshow(tvshow, season, episode, languages, filename):
         if tv_show_seasonurl is not None:
             log(__name__, "Tv show season found in list, getting subs ...")
             url = main_url + tv_show_seasonurl
-            search_string = "s%#02de%#02d" % (int(season), int(episode))
-            getallsubs(url, languages, filename, search_string)
+            epstr = "%d:%d" % (int(season), int(episode))
+            getallsubs(url, languages, filename, epstr)
 
 
 def search_manual(searchstr, languages, filename):
@@ -324,7 +327,7 @@ def search(item):
         search_filename(filename, item['3let_language'])
 
 
-def download(link, search_string=""):
+def download(link, episode=""):
     subtitle_list = []
     exts = [".srt", ".sub", ".txt", ".smi", ".ssa", ".ass"]
     downloadlink_pattern = "...<a href=\"(.+?)\" rel=\"nofollow\" onclick=\"DownloadSubtitle"
@@ -394,19 +397,21 @@ def download(link, search_string=""):
             xbmc.sleep(500)
             xbmc.executebuiltin(('XBMC.Extract("%s","%s")' % (local_tmp_file, tempdir,)).encode('utf-8'), True)
 
+        episode_pattern = None
+        if episode != '':
+            episode_pattern = re.compile(get_episode_pattern(episode), re.IGNORECASE)
         for file in xbmcvfs.listdir(tempdir)[1]:
-            if sys.platform.startswith('win'):
-                file = os.path.join(tempdir, file)
-            else:
-                file = os.path.join(tempdir.encode('utf-8'), file)
             if os.path.splitext(file)[1] in exts:
-                if search_string and string.find(string.lower(file), string.lower(search_string)) == -1:
+                log(__name__, 'match '+episode+' '+file)
+                if episode_pattern.search(file):
+                    log(__name__, 'match!')
+                if episode_pattern and not episode_pattern.search(file):
                     continue
                 log(__name__, "=== returning subtitle file %s" % file)
-                subtitle_list.append(file)
+                subtitle_list.append(os.path.join(tempdir, file))
 
         if len(subtitle_list) == 0:
-            if search_string:
+            if episode:
                 xbmc.executebuiltin((u'Notification(%s,%s)' % (__scriptname__, __language__(32002))).encode('utf-8'))
             else:
                 xbmc.executebuiltin((u'Notification(%s,%s)' % (__scriptname__, __language__(32003))).encode('utf-8'))
@@ -481,13 +486,13 @@ if params['action'] == 'search' or params['action'] == 'manualsearch':
     search(item)
 
 elif params['action'] == 'download':
-    ## we pickup all our arguments sent from def Search()
-    if 'find' in params:
-        subs = download(params["link"], params["find"])
+    # we pickup all our arguments sent from def Search()
+    if 'episode' in params:
+        subs = download(params["link"], params["episode"])
     else:
         subs = download(params["link"])
-    ## we can return more than one subtitle for multi CD versions, for now we are still working out how to handle that
-    ## in XBMC core
+    # we can return more than one subtitle for multi CD versions, for now we are still working out how to handle that
+    # in XBMC core
     for sub in subs:
         listitem = xbmcgui.ListItem(label=sub)
         xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]), url=sub, listitem=listitem, isFolder=False)

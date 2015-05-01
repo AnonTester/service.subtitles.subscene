@@ -403,8 +403,6 @@ def download(link, episode=""):
         for file in xbmcvfs.listdir(tempdir)[1]:
             if os.path.splitext(file)[1] in exts:
                 log(__name__, 'match '+episode+' '+file)
-                if episode_pattern.search(file):
-                    log(__name__, 'match!')
                 if episode_pattern and not episode_pattern.search(file):
                     continue
                 log(__name__, "=== returning subtitle file %s" % file)
@@ -499,12 +497,3 @@ elif params['action'] == 'download':
 
 xbmcplugin.endOfDirectory(int(sys.argv[1]))  # send end of directory to XBMC
   
-  
-  
-  
-  
-  
-  
-  
-  
-    

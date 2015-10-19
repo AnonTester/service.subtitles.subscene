@@ -365,19 +365,19 @@ def download(link, episode=""):
 
         try:
             log(__name__, "Saving subtitles to '%s'" % local_tmp_file)
-            local_file_handle = open(local_tmp_file, "wb")
+            local_file_handle = xbmcvfs.File(local_tmp_file, "wb")
             local_file_handle.write(response.read())
             local_file_handle.close()
 
             # Check archive type (rar/zip/else) through the file header (rar=Rar!, zip=PK)
-            myfile = open(local_tmp_file, "rb")
-            myfile.seek(0)
+            myfile = xbmcvfs.File(local_tmp_file, "rb")
+            myfile.seek(0,0)
             if myfile.read(1) == 'R':
                 typeid = "rar"
                 packed = True
                 log(__name__, "Discovered RAR Archive")
             else:
-                myfile.seek(0)
+                myfile.seek(0,0)
                 if myfile.read(1) == 'P':
                     typeid = "zip"
                     packed = True
@@ -388,7 +388,7 @@ def download(link, episode=""):
                     log(__name__, "Discovered a non-archive file")
             myfile.close()
             local_tmp_file = os.path.join(tempdir, "subscene." + typeid)
-            os.rename(os.path.join(tempdir, "subscene.xxx"), local_tmp_file)
+            xbmcvfs.rename(os.path.join(tempdir, "subscene.xxx"), local_tmp_file)
             log(__name__, "Saving to %s" % local_tmp_file)
         except:
             log(__name__, "Failed to save subtitle to %s" % local_tmp_file)

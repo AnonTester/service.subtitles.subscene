@@ -230,7 +230,7 @@ def getallsubs(url, allowed_languages, filename="", episode=""):
                 subtitles.append({'rating': rating, 'filename': subtitle_name, 'sync': sync, 'link': link,
                                   'lang': language_info, 'hearing_imp': hearing_imp, 'comment': comment})
 
-    subtitles.sort(key=lambda x: [not x['sync']])
+    subtitles.sort(key=lambda x: [not x['sync'], not x['lang']['name'] == PreferredSub])
     for s in subtitles:
         append_subtitle(s)
 
@@ -455,13 +455,15 @@ if params['action'] == 'search' or params['action'] == 'manualsearch':
     item['title'] = normalizeString(xbmc.getInfoLabel("VideoPlayer.OriginalTitle"))  # try to get original title
     item['file_original_path'] = urllib.unquote(xbmc.Player().getPlayingFile().decode('utf-8'))  # Full path
     item['3let_language'] = []
+    PreferredSub = params.get('preferredlanguage')
 
     if 'searchstring' in params:
         item['mansearch'] = True
         item['mansearchstr'] = params['searchstring']
 
-    for lang in urllib.unquote(params['languages']).decode('utf-8').split(","):
-        item['3let_language'].append(xbmc.convertLanguage(lang, xbmc.ISO_639_2))
+    if 'languages' in params:
+        for lang in urllib.unquote(params['languages']).decode('utf-8').split(","):
+            item['3let_language'].append(xbmc.convertLanguage(lang, xbmc.ISO_639_2))
 
     if item['title'] == "":
         item['title'] = normalizeString(xbmc.getInfoLabel("VideoPlayer.Title"))  # no original title, get just Title

@@ -36,7 +36,9 @@ from SubsceneUtilities import log, geturl, get_language_codes, subscene_language
 main_url = "http://subscene.com"
 
 aliases = {
-    "Marvel's Agents of S.H.I.E.L.D." : "Agents of Shield"
+    "marvels agents of shield" : "Agents of Shield",
+    "marvels agents of s.h.i.e.l.d" : "Agents of Shield",
+    "marvels jessica jones": "Jessica Jones"
 }
 
 # Seasons as strings for searching
@@ -240,7 +242,7 @@ def getallsubs(url, allowed_languages, filename="", episode=""):
                 sync = True
 
             if episode != "":
-                log(__name__, "match: "+subtitle_name)
+                # log(__name__, "match: "+subtitle_name)
                 if episode_regex.search(subtitle_name):
                     subtitles.append({'rating': rating, 'filename': subtitle_name, 'sync': sync, 'link': link,
                                       'lang': language_info, 'hearing_imp': hearing_imp, 'comment': comment})
@@ -294,10 +296,13 @@ def search_movie(title, year, languages, filename):
 
 def search_tvshow(tvshow, season, episode, languages, filename):
     tvshow = prepare_search_string(tvshow)
-    search_string = tvshow + " - " + seasons[int(season)] + " Season"
 
-    if tvshow in aliases:
-        tvshow = aliases[tvshow]
+    tvshow_lookup = tvshow.lower().replace("'", "").strip(".")
+    if tvshow_lookup in aliases:
+        log(__name__, 'found alias for "%s"' % tvshow_lookup)
+        tvshow = aliases[tvshow_lookup]
+
+    search_string = tvshow + " - " + seasons[int(season)] + " Season"
 
     log(__name__, "Search tvshow = %s" % search_string)
     url = main_url + "/subtitles/title?q=" + urllib.quote_plus(search_string) + '&r=true'

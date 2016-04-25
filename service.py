@@ -33,12 +33,13 @@ sys.path.append(__resource__)
 
 from SubsceneUtilities import log, geturl, get_language_codes, subscene_languages, get_episode_pattern
 
-main_url = "http://subscene.com"
+main_url = "https://subscene.com"
 
 aliases = {
     "marvels agents of shield" : "Agents of Shield",
     "marvels agents of s.h.i.e.l.d" : "Agents of Shield",
-    "marvels jessica jones": "Jessica Jones"
+    "marvels jessica jones": "Jessica Jones",
+    "dcs legends of tomorrow": "Legends of Tomorrow"
 }
 
 # Seasons as strings for searching

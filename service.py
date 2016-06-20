@@ -394,7 +394,7 @@ def download(link, episode=""):
 
         if response.getcode() != 200:
             log(__name__, "Failed to download subtitle file")
-            return
+            return subtitle_list
 
         local_tmp_file = os.path.join(tempdir, "subscene.xxx")
         packed = False

@@ -392,6 +392,10 @@ def download(link, episode=""):
         request = urllib2.Request(downloadlink, postparams, headers)
         response = urllib2.urlopen(request)
 
+        if response.getcode() != 200:
+            log(__name__, "Failed to download subtitle file")
+            return
+
         local_tmp_file = os.path.join(tempdir, "subscene.xxx")
         packed = False
 

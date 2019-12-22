@@ -272,7 +272,7 @@ def search_movie(title, year, languages, filename):
     title = prepare_search_string(title)
 
     log(__name__, "Search movie = %s" % title)
-    url = main_url + "/subtitles/title?q=" + urllib.quote_plus(title) + '&r=true'
+    url = main_url + "/subtitles/searchbytitle?query="+ urllib.quote_plus(title)
     content, response_url = geturl(url)
 
     if content is not None:
@@ -307,7 +307,7 @@ def search_tvshow(tvshow, season, episode, languages, filename):
     search_string = tvshow + " - " + seasons[int(season)] + " Season"
 
     log(__name__, "Search tvshow = %s" % search_string)
-    url = main_url + "/subtitles/title?q=" + urllib.quote_plus(search_string) + '&r=true'
+    url = main_url + "/subtitles/searchbytitle?query=" + urllib.quote_plus(search_string)
     content, response_url = geturl(url)
 
     if content is not None:
@@ -322,7 +322,7 @@ def search_tvshow(tvshow, season, episode, languages, filename):
 
 def search_manual(searchstr, languages, filename):
     search_string = prepare_search_string(searchstr)
-    url = main_url + "/subtitles/release?q=" + search_string + '&r=true'
+    url = main_url + "/subtitles/searchbytitle?query=" + search_string
     getallsubs(url, languages, filename)
 
 

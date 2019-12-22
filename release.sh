@@ -7,11 +7,11 @@ if [[ $(git status --porcelain | wc -c) -ne 0 ]]; then
   exit 1
 fi
 
-git push
+read -rp "Enter new version number: " VERSION
+git push --tags
 
 RELEASES_URL="https://api.github.com/repos/jarmo/service.subtitles.subscene/releases"
 FILES=`git ls-files | grep -v ".gitignore" | grep -v "release.sh" | sed 's/^/service.subtitles.subscene\//' | xargs`
-VERSION=`git tag | tail -1`
 ZIP_NAME="`basename $(pwd)`-$VERSION.zip"
 
 pushd .. > /dev/null

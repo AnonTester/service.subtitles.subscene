@@ -8,7 +8,7 @@ if [[ $(git status --porcelain | wc -c) -ne 0 ]]; then
 fi
 
 read -rp "Enter new version number: " VERSION
-git push --tags
+git push
 
 RELEASES_URL="https://api.github.com/repos/jarmo/service.subtitles.subscene/releases"
 FILES=`git ls-files | grep -v ".gitignore" | grep -v "release.sh" | sed 's/^/service.subtitles.subscene\//' | xargs`

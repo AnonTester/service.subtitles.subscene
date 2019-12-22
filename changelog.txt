@@ -1,3 +1,6 @@
+1.8.0
+- fix searching for subtitles
+
 1.7.1
 - better download handling
 

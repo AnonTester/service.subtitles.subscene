@@ -1,3 +1,8 @@
+1.8.1
+- Kodi 19 / Python 3 compatibility
+- Add line break after subtitle title and before subtitle comments 
+- Change comment colour to silver for improved contrast of selected entries
+
 1.8.0
 - fix searching for subtitles
 

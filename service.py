@@ -17,7 +17,6 @@ import xbmcplugin
 import uuid
 import unicodedata
 import re
-#import string
 import difflib
 from operator import itemgetter
 

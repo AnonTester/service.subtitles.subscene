@@ -3,8 +3,13 @@
 import os
 import sys
 import xbmc
-import urllib
-import urllib2
+if sys.version_info.major == 3:
+    import urllib.request, urllib.parse, urllib.error
+    import html.parser
+else:
+    import urllib
+    import urllib2
+    import HTMLParser
 import xbmcvfs
 import xbmcaddon
 import xbmcgui
@@ -12,9 +17,7 @@ import xbmcplugin
 import uuid
 import unicodedata
 import re
-import string
 import difflib
-import HTMLParser
 from operator import itemgetter
 
 
@@ -25,10 +28,16 @@ __scriptname__ = __addon__.getAddonInfo('name')
 __version__ = __addon__.getAddonInfo('version')
 __language__ = __addon__.getLocalizedString
 
-__cwd__ = unicode(xbmc.translatePath(__addon__.getAddonInfo('path')), 'utf-8')
-__profile__ = unicode(xbmc.translatePath(__addon__.getAddonInfo('profile')), 'utf-8')
-__resource__ = unicode(xbmc.translatePath(os.path.join(__cwd__, 'resources', 'lib')), 'utf-8')
-__temp__ = unicode(xbmc.translatePath(os.path.join(__profile__, 'temp', '')), 'utf-8')
+if sys.version_info.major == 3:
+    __cwd__ = xbmc.translatePath(__addon__.getAddonInfo('path'))
+    __profile__ = xbmc.translatePath(__addon__.getAddonInfo('profile'))
+    __resource__ = xbmc.translatePath(os.path.join(__cwd__, 'resources', 'lib'))
+    __temp__ = xbmc.translatePath(os.path.join(__profile__, 'temp', ''))
+else:
+    __cwd__ = unicode(xbmc.translatePath(__addon__.getAddonInfo('path')), 'utf-8')
+    __profile__ = unicode(xbmc.translatePath(__addon__.getAddonInfo('profile')), 'utf-8')
+    __resource__ = unicode(xbmc.translatePath(os.path.join(__cwd__, 'resources', 'lib')), 'utf-8')
+    __temp__ = unicode(xbmc.translatePath(os.path.join(__profile__, 'temp', '')), 'utf-8')
 
 sys.path.append(__resource__)
 
@@ -56,8 +65,9 @@ movie_season_pattern = ("<a href=\"(?P<link>/subtitles/[^\"]*)\">(?P<title>[^<]+
 
 
 def rmtree(path):
-    if isinstance(path, unicode):
-        path = path.encode('utf-8')
+    if sys.version_info.major < 3:
+        if isinstance(path, unicode):
+            path = path.encode('utf-8')
     dirs, files = xbmcvfs.listdir(path)
     for dir in dirs:
         rmtree(os.path.join(path, dir))
@@ -76,8 +86,10 @@ xbmcvfs.mkdirs(__temp__)
 def find_movie(content, title, year):
     found_urls = {}
     found_movies = []
-
-    h = HTMLParser.HTMLParser()
+    if sys.version_info.major == 3:
+        h = html.parser.HTMLParser()
+    else:
+        h = HTMLParser.HTMLParser()
     for secmatches in re.finditer(search_section_pattern, content, re.IGNORECASE | re.DOTALL):
         log(__name__, secmatches.group('section'))
         for matches in re.finditer(movie_season_pattern, secmatches.group('content'), re.IGNORECASE | re.DOTALL):
@@ -93,7 +105,7 @@ def find_movie(content, title, year):
             found_title = h.unescape(found_title)
             log(__name__, "Found movie on search page: %s (%s)" % (found_title, matches.group('year')))
             found_movies.append(
-                {'t': string.lower(found_title),
+                {'t': found_title.lower(),
                  'y': int(matches.group('year')),
                  'is_exact': secmatches.group('section') == 'exact',
                  'is_close': secmatches.group('section') == 'close',
@@ -101,17 +113,17 @@ def find_movie(content, title, year):
                  'c': int(matches.group('numsubtitles'))})
 
     year = int(year)
-    title = string.lower(title)
+    title = title.lower()
     # Priority 1: matching title and year
     for movie in found_movies:
-        if string.find(movie['t'], title) > -1:
+        if movie['t'].find(title) > -1:
             if movie['y'] == year:
                 log(__name__, "Matching movie found on search page: %s (%s)" % (movie['t'], movie['y']))
                 return movie['l']
 
     # Priority 2: matching title and one off year
     for movie in found_movies:
-        if string.find(movie['t'], title) > -1:
+        if movie['t'].find(title) > -1:
             if movie['y'] == year + 1 or movie['y'] == year - 1:
                 log(__name__, "Matching movie found on search page (one off year): %s (%s)" % (movie['t'], movie['y']))
                 return movie['l']
@@ -149,10 +161,10 @@ def find_tv_show_season(content, tvshow, season):
             continue
         log(__name__, "Found tv show season on search page: %s" % found_title)
         found_urls.append(matches.group('link'))
-        s = difflib.SequenceMatcher(None, string.lower(found_title + ' ' + matches.group('year')), string.lower(tvshow))
+        s = difflib.SequenceMatcher(None, (found_title + ' ' + matches.group('year')).lower(), tvshow.lower())
         all_tvshows.append(matches.groups() + (s.ratio() * int(matches.group('numsubtitles')),))
-        if string.find(string.lower(found_title), string.lower(tvshow) + " ") > -1:
-            if string.find(string.lower(found_title), string.lower(season)) > -1:
+        if found_title.lower().find(tvshow.lower() + " ") > -1:
+            if found_title.lower().find(season.lower()) > -1:
                 log(__name__, "Matching tv show season found on search page: %s" % found_title)
                 possible_matches.append(matches.groups())
 
@@ -174,11 +186,16 @@ def find_tv_show_season(content, tvshow, season):
 def append_subtitle(item):
     title = item['filename']
     if 'comment' in item and item['comment'] != '':
-        title = "%s [COLOR gray][I](%s)[/I][/COLOR]" % (title, item['comment'])
-    listitem = xbmcgui.ListItem(label=item['lang']['name'],
-                                label2=title,
-                                iconImage=item['rating'],
-                                thumbnailImage=item['lang']['2let'])
+        title = "%s[CR][COLOR silver][I](%s)[/I][/COLOR]" % (title, item['comment'])
+    if sys.version_info.major == 3:
+        listitem = xbmcgui.ListItem(label=item['lang']['name'],
+                                    label2=title)
+        listitem.setArt({'icon': item['rating'], 'thumb': item['lang']['2let']})
+    else:
+        listitem = xbmcgui.ListItem(label=item['lang']['name'],
+                                    label2=title,
+                                    iconImage=item['rating'],
+                                    thumbnailImage=item['lang']['2let'])
 
     listitem.setProperty("sync", 'true' if item["sync"] else 'false')
     listitem.setProperty("hearing_imp", 'true' if item["hearing_imp"] else 'false')
@@ -205,7 +222,10 @@ def getallsubs(url, allowed_languages, filename="", episode=""):
 
     codes = get_language_codes(allowed_languages)
     if len(codes) < 1:
-        xbmc.executebuiltin((u'Notification(%s,%s)' % (__scriptname__, __language__(32004))).encode('utf-8'))
+        if sys.version_info.major == 3:
+            xbmc.executebuiltin('Notification(%s,%s)' % (__scriptname__, __language__(32004)))
+        else:
+            xbmc.executebuiltin((u'Notification(%s,%s)' % (__scriptname__, __language__(32004))).encode('utf-8'))
         return
     log(__name__, 'LanguageFilter='+','.join(codes))
     content, response_url = geturl(url, 'LanguageFilter='+','.join(codes))
@@ -214,7 +234,10 @@ def getallsubs(url, allowed_languages, filename="", episode=""):
         return
 
     subtitles = []
-    h = HTMLParser.HTMLParser()
+    if sys.version_info.major == 3:
+        h = html.parser.HTMLParser()
+    else:
+        h = HTMLParser.HTMLParser()
     episode_regex = None
     if episode != "":
         episode_regex = re.compile(get_episode_pattern(episode), re.IGNORECASE)
@@ -229,7 +252,7 @@ def getallsubs(url, allowed_languages, filename="", episode=""):
 
         if language_info and language_info['3let'] in allowed_languages:
             link = main_url + matches.group('link')
-            subtitle_name = string.strip(matches.group('filename'))
+            subtitle_name = matches.group('filename').strip()
             hearing_imp = (matches.group('hiclass') == "a41")
             rating = '0'
             if matches.group('quality') == "bad-icon":
@@ -237,10 +260,10 @@ def getallsubs(url, allowed_languages, filename="", episode=""):
             if matches.group('quality') == "positive-icon":
                 rating = '5'
 
-            comment = re.sub("[\r\n\t]+", " ", h.unescape(string.strip(matches.group('comment'))))
+            comment = re.sub("[\r\n\t]+", " ", h.unescape(matches.group('comment').strip()))
 
             sync = False
-            if filename != "" and string.lower(filename) == string.lower(subtitle_name):
+            if filename != "" and filename.lower() == subtitle_name.lower():
                 sync = True
 
             if episode != "":
@@ -263,16 +286,20 @@ def getallsubs(url, allowed_languages, filename="", episode=""):
 
 
 def prepare_search_string(s):
-    s = string.strip(s)
+    s = str(s)
+    s = s.strip()
     s = re.sub(r'\s+\(\d\d\d\d\)$', '', s)  # remove year from title
-    return s
+    return str(s)
 
 
 def search_movie(title, year, languages, filename):
     title = prepare_search_string(title)
 
     log(__name__, "Search movie = %s" % title)
-    url = main_url + "/subtitles/searchbytitle?query="+ urllib.quote_plus(title)
+    if sys.version_info.major == 3:
+        url = main_url + "/subtitles/searchbytitle?query="+ urllib.parse.quote_plus(title)
+    else:
+        url = main_url + "/subtitles/searchbytitle?query="+ urllib.quote_plus(title)
     content, response_url = geturl(url)
 
     if content is not None:
@@ -284,8 +311,8 @@ def search_movie(title, year, languages, filename):
             getallsubs(url, languages, filename)
         else:
             log(__name__, "Movie not found in list: %s" % title)
-            if string.find(string.lower(title), "&") > -1:
-                title = string.replace(title, "&", "and")
+            if title.lower().find("&") > -1:
+                title = title.replace("&", "and")
                 log(__name__, "Trying searching with replacing '&' to 'and': %s" % title)
                 subspage_url = find_movie(content, title, year)
                 if subspage_url is not None:
@@ -307,7 +334,10 @@ def search_tvshow(tvshow, season, episode, languages, filename):
     search_string = tvshow + " - " + seasons[int(season)] + " Season"
 
     log(__name__, "Search tvshow = %s" % search_string)
-    url = main_url + "/subtitles/searchbytitle?query=" + urllib.quote_plus(search_string)
+    if sys.version_info.major == 3:
+        url = main_url + "/subtitles/searchbytitle?query=" + urllib.parse.quote_plus(search_string)
+    else:
+        url = main_url + "/subtitles/searchbytitle?query=" + urllib.quote_plus(search_string)
     content, response_url = geturl(url)
 
     if content is not None:
@@ -327,7 +357,7 @@ def search_manual(searchstr, languages, filename):
 
 
 def search_filename(filename, languages):
-    title, year = xbmc.getCleanMovieTitle(filename)
+    title, year = str(xbmc.getCleanMovieTitle(filename))
     log(__name__, "clean title: \"%s\" (%s)" % (title, year))
     try:
         yearval = int(year)
@@ -335,9 +365,9 @@ def search_filename(filename, languages):
         yearval = 0
     match = re.search(r'\WS(?P<season>\d\d)E(?P<episode>\d\d)', filename, flags=re.IGNORECASE)
     if match is not None:
-        tvshow = string.strip(title[:match.start('season') - 1])
-        season = string.lstrip(match.group('season'), '0')
-        episode = string.lstrip(match.group('episode'), '0')
+        tvshow = title[:match.start('season') - 1].strip()
+        season = match.group('season').lstrip('0')
+        episode = match.group('episode').lstrip('0')
         search_tvshow(tvshow, season, episode, languages, filename)
     elif title and yearval > 1900:
         search_movie(title, year, languages, filename)
@@ -367,10 +397,15 @@ def download(link, episode=""):
     downloadlink_pattern = "...<a href=\"(.+?)\" rel=\"nofollow\" onclick=\"DownloadSubtitle"
 
     uid = uuid.uuid4()
-    tempdir = os.path.join(__temp__, unicode(uid))
-    xbmcvfs.mkdirs(tempdir)
+    if sys.version_info.major == 3:
+        tempdir = os.path.join(__temp__, str(uid))
+    else:
+        tempdir = os.path.join(__temp__, unicode(uid))
+    if not xbmcvfs.mkdirs(tempdir):
+        log(__name__, "Failed to create temp directory " + tempdir)
 
     content, response_url = geturl(link)
+    content = str(content)
     match = re.compile(downloadlink_pattern).findall(content)
     if match:
         downloadlink = main_url + match[0]
@@ -380,17 +415,26 @@ def download(link, episode=""):
         typeid = "zip"
         filmid = 0
 
-        postparams = urllib.urlencode(
-            {'__EVENTTARGET': 's$lc$bcr$downloadLink', '__EVENTARGUMENT': '', '__VIEWSTATE': viewstate,
-             '__PREVIOUSPAGE': previouspage, 'subtitleId': subtitleid, 'typeId': typeid, 'filmId': filmid})
+        if sys.version_info.major == 3:
+            postparams = urllib.parse.urlencode(
+                {'__EVENTTARGET': 's$lc$bcr$downloadLink', '__EVENTARGUMENT': '', '__VIEWSTATE': viewstate,
+                 '__PREVIOUSPAGE': previouspage, 'subtitleId': subtitleid, 'typeId': typeid, 'filmId': filmid}).encode()
+        else:
+            postparams = urllib.urlencode(
+                {'__EVENTTARGET': 's$lc$bcr$downloadLink', '__EVENTARGUMENT': '', '__VIEWSTATE': viewstate,
+                 '__PREVIOUSPAGE': previouspage, 'subtitleId': subtitleid, 'typeId': typeid, 'filmId': filmid})
 
         useragent = ("User-Agent=Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.2.3) "
                        "Gecko/20100401 Firefox/3.6.3 ( .NET CLR 3.5.30729)")
         headers = {'User-Agent': useragent, 'Referer': link}
         log(__name__, "Fetching subtitles using url '%s' with referer header '%s' and post parameters '%s'" % (
             downloadlink, link, postparams))
-        request = urllib2.Request(downloadlink, postparams, headers)
-        response = urllib2.urlopen(request)
+        if sys.version_info.major == 3:
+            request = urllib.request.Request(downloadlink, postparams, headers)
+            response = urllib.request.urlopen(request)
+        else:
+            request = urllib2.Request(downloadlink, postparams, headers)
+            response = urllib2.urlopen(request)
 
         if response.getcode() != 200:
             log(__name__, "Failed to download subtitle file")
@@ -401,10 +445,15 @@ def download(link, episode=""):
 
         try:
             log(__name__, "Saving subtitles to '%s'" % local_tmp_file)
-            local_file_handle = xbmcvfs.File(local_tmp_file, "wb")
-            local_file_handle.write(response.read())
+            if sys.version_info.major == 3:
+                local_file_handle = xbmcvfs.File(local_tmp_file, "w")
+                local_file_handle.write(bytearray(response.read()))
+            else:
+                local_file_handle = xbmcvfs.File(local_tmp_file, "wb")
+                local_file_handle.write(response.read())
             local_file_handle.close()
 
+            log(__name__, "Checking archive type")
             # Check archive type (rar/zip/else) through the file header (rar=Rar!, zip=PK)
             myfile = xbmcvfs.File(local_tmp_file, "rb")
             myfile.seek(0,0)
@@ -429,9 +478,14 @@ def download(link, episode=""):
         except:
             log(__name__, "Failed to save subtitle to %s" % local_tmp_file)
 
+        #NOTE: RAR is not supported natively. The addon vfs.rar or vfs.libarchive is required and needs to be enabled for rar support. However, those addons aren't working in Kodi 19 yet.
         if packed:
             xbmc.sleep(500)
-            xbmc.executebuiltin(('XBMC.Extract("%s","%s")' % (local_tmp_file, tempdir,)).encode('utf-8'), True)
+            log(__name__, "Extracting '%s' to '%s'" % (local_tmp_file, tempdir))
+            if sys.version_info.major == 3:
+                xbmc.executebuiltin('XBMC.Extract("%s","%s")' % (local_tmp_file, tempdir), True)
+            else:
+                xbmc.executebuiltin(('XBMC.Extract("%s","%s")' % (local_tmp_file, tempdir,)).encode('utf-8'), True)
 
         episode_pattern = None
         if episode != '':
@@ -455,18 +509,29 @@ def download(link, episode=""):
                 subtitle_list.append(os.path.join(tempdir, file))
 
         if len(subtitle_list) == 0:
-            if episode:
-                xbmc.executebuiltin((u'Notification(%s,%s)' % (__scriptname__, __language__(32002))).encode('utf-8'))
+            if sys.version_info.major == 3:
+                if episode:
+                    xbmc.executebuiltin('Notification(%s,%s)' % (__scriptname__, __language__(32002)))
+                else:
+                    xbmc.executebuiltin('Notification(%s,%s)' % (__scriptname__, __language__(32003)))
             else:
-                xbmc.executebuiltin((u'Notification(%s,%s)' % (__scriptname__, __language__(32003))).encode('utf-8'))
+                if episode:
+                    xbmc.executebuiltin((u'Notification(%s,%s)' % (__scriptname__, __language__(32002))).encode('utf-8'))
+                else:
+                    xbmc.executebuiltin((u'Notification(%s,%s)' % (__scriptname__, __language__(32003))).encode('utf-8'))
 
     return subtitle_list
 
 
-def normalizeString(str):
-    return unicodedata.normalize(
-        'NFKD', unicode(unicode(str, 'utf-8'))
-    ).encode('ascii', 'ignore')
+def normalizeString(string):
+    if sys.version_info.major == 3:
+        return unicodedata.normalize(
+            'NFKD', string
+        )
+    else:
+        return unicodedata.normalize(
+            'NFKD', unicode(unicode(string, 'utf-8'))
+        ).encode('ascii', 'ignore')
 
 
 def get_params():
@@ -497,26 +562,34 @@ if params['action'] == 'search' or params['action'] == 'manualsearch':
     item['year'] = xbmc.getInfoLabel("VideoPlayer.Year")  # Year
     item['season'] = str(xbmc.getInfoLabel("VideoPlayer.Season"))  # Season
     item['episode'] = str(xbmc.getInfoLabel("VideoPlayer.Episode"))  # Episode
+    if item['episode'].lower().find("s") > -1:  # Check if season is "Special"
+        item['season'] = "0"  #
+        item['episode'] = item['episode'][-1:]
+
     item['tvshow'] = normalizeString(xbmc.getInfoLabel("VideoPlayer.TVshowtitle"))  # Show
     item['title'] = normalizeString(xbmc.getInfoLabel("VideoPlayer.OriginalTitle"))  # try to get original title
-    item['file_original_path'] = urllib.unquote(xbmc.Player().getPlayingFile().decode('utf-8'))  # Full path
-    item['3let_language'] = []
-    PreferredSub = params.get('preferredlanguage')
+    if item['title'] == "":
+        item['title'] = normalizeString(xbmc.getInfoLabel("VideoPlayer.Title"))  # no original title, get just Title
 
     if 'searchstring' in params:
         item['mansearch'] = True
         item['mansearchstr'] = params['searchstring']
 
+    item['3let_language'] = []
+    PreferredSub = params.get('preferredlanguage')
+
     if 'languages' in params:
-        for lang in urllib.unquote(params['languages']).decode('utf-8').split(","):
-            item['3let_language'].append(xbmc.convertLanguage(lang, xbmc.ISO_639_2))
+        if sys.version_info.major == 3:
+            for lang in urllib.parse.unquote(params['languages']).split(","):
+                item['3let_language'].append(xbmc.convertLanguage(lang, xbmc.ISO_639_2))
+        else:
+            for lang in urllib.unquote(params['languages']).decode('utf-8').split(","):
+                item['3let_language'].append(xbmc.convertLanguage(lang, xbmc.ISO_639_2))
 
-    if item['title'] == "":
-        item['title'] = normalizeString(xbmc.getInfoLabel("VideoPlayer.Title"))  # no original title, get just Title
-
-    if item['episode'].lower().find("s") > -1:  # Check if season is "Special"
-        item['season'] = "0"  #
-        item['episode'] = item['episode'][-1:]
+    if sys.version_info.major == 3:
+        item['file_original_path'] = urllib.parse.unquote(xbmc.Player().getPlayingFile())  # Full path
+    else:
+        item['file_original_path'] = urllib.unquote(xbmc.Player().getPlayingFile().decode('utf-8'))  # Full path
 
     if item['file_original_path'].find("http") > -1:
         item['temp'] = True
@@ -544,4 +617,4 @@ elif params['action'] == 'download':
         xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]), url=sub, listitem=listitem, isFolder=False)
 
 xbmcplugin.endOfDirectory(int(sys.argv[1]))  # send end of directory to XBMC
-  
+ 

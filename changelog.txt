@@ -1,3 +1,6 @@
+1.8.2
+- Fix python 3 tv show subtitle search
+
 1.8.1
 - Kodi 19 / Python 3 compatibility
 - Add line break after subtitle title and before subtitle comments 

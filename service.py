@@ -5,7 +5,7 @@ import sys
 import xbmc
 if sys.version_info.major == 3:
     import urllib.request, urllib.parse, urllib.error
-    import html.parser
+    import html.parser as HTMLParser
 else:
     import urllib
     import urllib2
@@ -19,7 +19,6 @@ import unicodedata
 import re
 import difflib
 from operator import itemgetter
-
 
 __addon__ = xbmcaddon.Addon()
 __author__ = __addon__.getAddonInfo('author')
@@ -86,10 +85,7 @@ xbmcvfs.mkdirs(__temp__)
 def find_movie(content, title, year):
     found_urls = {}
     found_movies = []
-    if sys.version_info.major == 3:
-        h = html.parser.HTMLParser()
-    else:
-        h = HTMLParser.HTMLParser()
+    h = HTMLParser.HTMLParser()
     for secmatches in re.finditer(search_section_pattern, content, re.IGNORECASE | re.DOTALL):
         log(__name__, secmatches.group('section'))
         for matches in re.finditer(movie_season_pattern, secmatches.group('content'), re.IGNORECASE | re.DOTALL):
@@ -234,10 +230,7 @@ def getallsubs(url, allowed_languages, filename="", episode=""):
         return
 
     subtitles = []
-    if sys.version_info.major == 3:
-        h = html.parser.HTMLParser()
-    else:
-        h = HTMLParser.HTMLParser()
+    h = HTMLParser.HTMLParser()
     episode_regex = None
     if episode != "":
         episode_regex = re.compile(get_episode_pattern(episode), re.IGNORECASE)

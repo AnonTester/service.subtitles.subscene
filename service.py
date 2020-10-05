@@ -28,10 +28,10 @@ __version__ = __addon__.getAddonInfo('version')
 __language__ = __addon__.getLocalizedString
 
 if sys.version_info.major == 3:
-    __cwd__ = xbmc.translatePath(__addon__.getAddonInfo('path'))
-    __profile__ = xbmc.translatePath(__addon__.getAddonInfo('profile'))
-    __resource__ = xbmc.translatePath(os.path.join(__cwd__, 'resources', 'lib'))
-    __temp__ = xbmc.translatePath(os.path.join(__profile__, 'temp', ''))
+    __cwd__ = xbmcvfs.translatePath(__addon__.getAddonInfo('path'))
+    __profile__ = xbmcvfs.translatePath(__addon__.getAddonInfo('profile'))
+    __resource__ = xbmcvfs.translatePath(os.path.join(__cwd__, 'resources', 'lib'))
+    __temp__ = xbmcvfs.translatePath(os.path.join(__profile__, 'temp', ''))
 else:
     __cwd__ = unicode(xbmc.translatePath(__addon__.getAddonInfo('path')), 'utf-8')
     __profile__ = unicode(xbmc.translatePath(__addon__.getAddonInfo('profile')), 'utf-8')
@@ -350,7 +350,7 @@ def search_manual(searchstr, languages, filename):
 
 
 def search_filename(filename, languages):
-    title, year = str(xbmc.getCleanMovieTitle(filename))
+    title, year = xbmc.getCleanMovieTitle(filename)
     log(__name__, "clean title: \"%s\" (%s)" % (title, year))
     try:
         yearval = int(year)
@@ -471,12 +471,15 @@ def download(link, episode=""):
         except:
             log(__name__, "Failed to save subtitle to %s" % local_tmp_file)
 
-        #NOTE: RAR is not supported natively. The addon vfs.rar or vfs.libarchive is required and needs to be enabled for rar support. However, those addons aren't working in Kodi 19 yet.
         if packed:
             xbmc.sleep(500)
             log(__name__, "Extracting '%s' to '%s'" % (local_tmp_file, tempdir))
             if sys.version_info.major == 3:
-                xbmc.executebuiltin('XBMC.Extract("%s","%s")' % (local_tmp_file, tempdir), True)
+                (dirs, files) = xbmcvfs.listdir('%s' % (local_tmp_file))
+                src = local_tmp_file + '/' + files[0]
+                dest = tempdir + '/' + files[0]
+                log(__name__, 'copy %s to %s' %(src, dest))
+                xbmcvfs.copy(src, dest)
             else:
                 xbmc.executebuiltin(('XBMC.Extract("%s","%s")' % (local_tmp_file, tempdir,)).encode('utf-8'), True)
 
@@ -577,7 +580,7 @@ if params['action'] == 'search' or params['action'] == 'manualsearch':
                 item['3let_language'].append(xbmc.convertLanguage(lang, xbmc.ISO_639_2))
         else:
             for lang in urllib.unquote(params['languages']).decode('utf-8').split(","):
-                item['3let_language'].append(xbmc.convertLanguage(lang, xbmc.ISO_639_2))
+                item['3let_language'].append(xbmc.convertLanguage(lang.decode('utf-8'), xbmc.ISO_639_2))
 
     if sys.version_info.major == 3:
         item['file_original_path'] = urllib.parse.unquote(xbmc.Player().getPlayingFile())  # Full path

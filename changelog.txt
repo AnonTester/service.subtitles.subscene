@@ -1,3 +1,7 @@
+1.9.4
+- Adjust windows/linux path when extracting on Kodi19 (wuff)
+- replace deprecated HTMLParser.unescape with html.unescape for Kodi19 (wuff)
+
 1.9.3 (backport changes from foreignonly version)
 - Fix extracting archives on Kodi19 (wuff)
 - Remove python requirement for both Kodi 18/19 compatibility (wuff)

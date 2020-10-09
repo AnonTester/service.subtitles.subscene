@@ -5,7 +5,6 @@ import sys
 import xbmc
 if sys.version_info.major == 3:
     import urllib.request, urllib.parse, urllib.error
-    import html.parser as HTMLParser
 else:
     import urllib
     import urllib2
@@ -85,7 +84,11 @@ xbmcvfs.mkdirs(__temp__)
 def find_movie(content, title, year):
     found_urls = {}
     found_movies = []
-    h = HTMLParser.HTMLParser()
+    if sys.version_info.major == 3:
+        import html
+    else:
+        html = HTMLParser.HTMLParser()
+
     for secmatches in re.finditer(search_section_pattern, content, re.IGNORECASE | re.DOTALL):
         log(__name__, secmatches.group('section'))
         for matches in re.finditer(movie_season_pattern, secmatches.group('content'), re.IGNORECASE | re.DOTALL):
@@ -98,7 +101,7 @@ def find_movie(content, title, year):
             found_urls[matches.group('link')] = len(found_movies)
 
             found_title = matches.group('title')
-            found_title = h.unescape(found_title)
+            found_title = html.unescape(found_title)
             log(__name__, "Found movie on search page: %s (%s)" % (found_title, matches.group('year')))
             found_movies.append(
                 {'t': found_title.lower(),
@@ -148,10 +151,14 @@ def find_tv_show_season(content, tvshow, season):
     possible_matches = []
     all_tvshows = []
 
-    h = HTMLParser.HTMLParser()
+    if sys.version_info.major == 3:
+        import html
+    else:
+        html = HTMLParser.HTMLParser()
+        
     for matches in re.finditer(movie_season_pattern, content, re.IGNORECASE | re.DOTALL):
         found_title = matches.group('title')
-        found_title = h.unescape(found_title)
+        found_title = html.unescape(found_title)
 
         if matches.group('link') in found_urls:
             continue
@@ -230,7 +237,11 @@ def getallsubs(url, allowed_languages, filename="", episode=""):
         return
 
     subtitles = []
-    h = HTMLParser.HTMLParser()
+    if sys.version_info.major == 3:
+        import html
+    else:
+        html = HTMLParser.HTMLParser()
+
     episode_regex = None
     if episode != "":
         episode_regex = re.compile(get_episode_pattern(episode), re.IGNORECASE)
@@ -253,7 +264,7 @@ def getallsubs(url, allowed_languages, filename="", episode=""):
             if matches.group('quality') == "positive-icon":
                 rating = '5'
 
-            comment = re.sub("[\r\n\t]+", " ", h.unescape(matches.group('comment').strip()))
+            comment = re.sub("[\r\n\t]+", " ", html.unescape(matches.group('comment').strip()))
 
             sync = False
             if filename != "" and filename.lower() == subtitle_name.lower():
@@ -476,8 +487,8 @@ def download(link, episode=""):
             log(__name__, "Extracting '%s' to '%s'" % (local_tmp_file, tempdir))
             if sys.version_info.major == 3:
                 (dirs, files) = xbmcvfs.listdir('%s' % (local_tmp_file))
-                src = local_tmp_file + '/' + files[0]
-                dest = tempdir + '/' + files[0]
+                src = os.path.join(local_tmp_file, files[0])
+                dest = os.path.join(tempdir, files[0])
                 log(__name__, 'copy %s to %s' %(src, dest))
                 xbmcvfs.copy(src, dest)
             else:

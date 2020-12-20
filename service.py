@@ -74,11 +74,12 @@ def rmtree(path):
     xbmcvfs.rmdir(path)
 
 
-try:
-    rmtree(__temp__)
-except:
-    pass
-xbmcvfs.mkdirs(__temp__)
+# cleaning up temp directory if it exists
+if xbmcvfs.exists(__temp__):
+    try:
+        rmtree(__temp__)
+    except:
+        pass
 
 
 def find_movie(content, title, year):
@@ -405,8 +406,13 @@ def download(link, episode=""):
         tempdir = os.path.join(__temp__, str(uid))
     else:
         tempdir = os.path.join(__temp__, unicode(uid))
-    if not xbmcvfs.mkdirs(tempdir):
+
+    try:
+        os.makedirs(tempdir)
+    except OSError:
         log(__name__, "Failed to create temp directory " + tempdir)
+    else:
+        log(__name__, "Successfully created temp directory " + tempdir)
 
     content, response_url = geturl(link)
     content = str(content)
@@ -486,18 +492,26 @@ def download(link, episode=""):
             xbmc.sleep(500)
             log(__name__, "Extracting '%s' to '%s'" % (local_tmp_file, tempdir))
             if sys.version_info.major == 3:
-                (dirs, files) = xbmcvfs.listdir('%s' % (local_tmp_file))
+                (dirs, files) = xbmcvfs.listdir('%s' % local_tmp_file)
                 src = os.path.join(local_tmp_file, files[0])
                 dest = os.path.join(tempdir, files[0])
-                log(__name__, 'copy %s to %s' %(src, dest))
+                log(__name__, 'copy %s to %s' % (src, dest))
                 xbmcvfs.copy(src, dest)
+                log(__name__, "=== Found subtitle file %s" % dest)
+                subtitle_list.append(dest)
             else:
                 xbmc.executebuiltin(('XBMC.Extract("%s","%s")' % (local_tmp_file, tempdir,)).encode('utf-8'), True)
+                for file in xbmcvfs.listdir(local_tmp_file)[1]:
+                    file = os.path.join(tempdir, file)
+                    if os.path.splitext(file)[1] in exts:
+                        log(__name__, "=== Found subtitle file %s" % file)
+                        subtitle_list.append(file)
 
         episode_pattern = None
         if episode != '':
             episode_pattern = re.compile(get_episode_pattern(episode), re.IGNORECASE)
 
+        log(__name__, "Checking temp dir subfolders for subtitle files...")
         for dir in xbmcvfs.listdir(tempdir)[0]:
             for file in xbmcvfs.listdir(os.path.join(tempdir, dir))[1]:
                 if os.path.splitext(file)[1] in exts:
@@ -507,6 +521,7 @@ def download(link, episode=""):
                     log(__name__, "=== returning subtitle file %s" % file)
                     subtitle_list.append(os.path.join(tempdir, dir, file))
 
+        log(__name__, "Checking temp dir for subtitle files...")
         for file in xbmcvfs.listdir(tempdir)[1]:
             if os.path.splitext(file)[1] in exts:
                 log(__name__, 'match '+episode+' '+file)
@@ -518,13 +533,17 @@ def download(link, episode=""):
         if len(subtitle_list) == 0:
             if sys.version_info.major == 3:
                 if episode:
+                    log(__name__, "=== Could not find matching episode in subtitle pack")
                     xbmc.executebuiltin('Notification(%s,%s)' % (__scriptname__, __language__(32002)))
                 else:
+                    log(__name__, "=== Download didn't contain a subtitle file")
                     xbmc.executebuiltin('Notification(%s,%s)' % (__scriptname__, __language__(32003)))
             else:
                 if episode:
+                    log(__name__, "=== Could not find matching episode in subtitle pack")
                     xbmc.executebuiltin((u'Notification(%s,%s)' % (__scriptname__, __language__(32002))).encode('utf-8'))
                 else:
+                    log(__name__, "=== Download didn't contain a subtitle file")
                     xbmc.executebuiltin((u'Notification(%s,%s)' % (__scriptname__, __language__(32003))).encode('utf-8'))
 
     return subtitle_list
@@ -623,5 +642,5 @@ elif params['action'] == 'download':
         listitem = xbmcgui.ListItem(label=sub)
         xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]), url=sub, listitem=listitem, isFolder=False)
 
+
 xbmcplugin.endOfDirectory(int(sys.argv[1]))  # send end of directory to XBMC
- 

@@ -130,4 +130,3 @@ def geturl(url, cookies=None):
         content = None
         return_url = None
     return content, return_url
-

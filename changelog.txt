@@ -1,3 +1,7 @@
+1.9.5
+- Adjust download function (wuff)
+- Update providers,readme and source link as per https://github.com/jarmo/service.subtitles.subscene/pull/10
+
 1.9.4
 - Adjust windows/linux path when extracting on Kodi19 (wuff)
 - replace deprecated HTMLParser.unescape with html.unescape for Kodi19 (wuff)
@@ -24,23 +28,22 @@
 - fix searching for subtitles (jarmo)
 
 1.7.1
-- better download handling (manacker)
+- better download handling (CrowleyAJ - manacker)
 
 1.7.0
-- improved title matching (manacker)
+- improved title matching (CrowleyAJ - manacker)
 
-1.6.0
+1.6.0 (CrowleyAJ - manacker)
 - prefer title over filename for search (better handling of streaming services)
 - find subtitle files in subfolders of archives
 - consider preferred language
 
-1.5.0
+1.5.0 (CrowleyAJ - manacker)
 - improved performance
 - improved language detection
 - removed support for languages with nearly no uploads on subscene
 - better title detection (release year can be one off)
 - better episode detection (allows episode markers in 1x01 format)
 
-1.1.0
+1.1.0 (CrowleyAJ - manacker)
 - added uploader comments to download selection
-

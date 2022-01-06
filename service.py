@@ -490,30 +490,64 @@ def download(link, episode=""):
 
         if packed:
             xbmc.sleep(500)
-            log(__name__, "Extracting '%s' to '%s'" % (local_tmp_file, tempdir))
             if sys.version_info.major == 3:
-                (dirs, files) = xbmcvfs.listdir('%s' % local_tmp_file)
-                src = os.path.join(local_tmp_file, files[0])
-                dest = os.path.join(tempdir, files[0])
-                log(__name__, 'copy %s to %s' % (src, dest))
-                xbmcvfs.copy(src, dest)
-                log(__name__, "=== Found subtitle file %s" % dest)
-                subtitle_list.append(dest)
+                log(__name__, "Checking '%s' for subtitle files to copy" % (local_tmp_file))
+                if sys.platform == "linux" or sys.platform == "linux2":
+                    log(__name__, "Platform identified as Linux")
+                    #Kodi on linux does not understand 'archive://' protocol
+                    (dirs, files) = xbmcvfs.listdir('%s' % xbmcvfs.translatePath(local_tmp_file))
+                else:
+                    log(__name__, "Platform identified as Non-Linux")
+                    #Kodi on windows and possibly Android requires archive:// protocol, so testing both
+                    (dirs, files) = xbmcvfs.listdir('archive:\\\\%s' % xbmcvfs.translatePath(urllib.parse.quote_plus(local_tmp_file)))
+                    if len(files) == 0:
+                        (dirs, files) = xbmcvfs.listdir('%s' % xbmcvfs.translatePath(local_tmp_file))
+                for file in files:
+                    dest = os.path.join(tempdir, file)
+                    log(__name__, "=== Found subtitle file %s" % dest)
+                    if sys.platform == "linux" or sys.platform == "linux2":
+                        #Kodi on linux does not understand 'archive://' protocol
+                        src = os.path.join(local_tmp_file, file)
+                        log(__name__, "trying to copy '%s' to '%s'" % (src, dest))
+                        if not xbmcvfs.copy(src, dest):
+                            log(__name__, "copying failed")
+                        else:
+                            log(__name__, "copying succeeded")
+                    else:
+                        #Kodi on windows and possibly Android requires archive:// protocol, so testing both
+                        src = xbmcvfs.translatePath(os.path.join("archive:\\\\%s" % urllib.parse.quote_plus(local_tmp_file), file))
+                        log(__name__, "trying to copy '%s' to '%s'" % (src, dest))
+                        if not xbmcvfs.copy(src, dest):
+                            log(__name__, "copying failed")
+                            #trying again
+                            src = os.path.join(local_tmp_file, file)
+                            log(__name__, "trying to copy '%s' to '%s'" % (src, dest))
+                            if not xbmcvfs.copy(src, dest):
+                                log(__name__, "copying failed")
+                            else:
+                                log(__name__, "copying succeeded")
+                        else:
+                            log(__name__, "copying succeeded")
+
+                    subtitle_list.append(dest)
             else:
+                log(__name__, "Extracting '%s' to '%s'" % (local_tmp_file, tempdir))
                 xbmc.executebuiltin(('XBMC.Extract("%s","%s")' % (local_tmp_file, tempdir,)).encode('utf-8'), True)
                 for file in xbmcvfs.listdir(local_tmp_file)[1]:
                     file = os.path.join(tempdir, file)
                     if os.path.splitext(file)[1] in exts:
                         log(__name__, "=== Found subtitle file %s" % file)
                         subtitle_list.append(file)
-
+            
         episode_pattern = None
         if episode != '':
             episode_pattern = re.compile(get_episode_pattern(episode), re.IGNORECASE)
 
         log(__name__, "Checking temp dir subfolders for subtitle files...")
         for dir in xbmcvfs.listdir(tempdir)[0]:
+            log(__name__, "Check dir subfolder %s" % dir)
             for file in xbmcvfs.listdir(os.path.join(tempdir, dir))[1]:
+                log(__name__, "Check dir subfolder file %s" % file)
                 if os.path.splitext(file)[1] in exts:
                     log(__name__, 'match '+episode+' '+file)
                     if episode_pattern and not episode_pattern.search(file):
@@ -523,6 +557,7 @@ def download(link, episode=""):
 
         log(__name__, "Checking temp dir for subtitle files...")
         for file in xbmcvfs.listdir(tempdir)[1]:
+            log(__name__, "Check dir file %s" % file)
             if os.path.splitext(file)[1] in exts:
                 log(__name__, 'match '+episode+' '+file)
                 if episode_pattern and not episode_pattern.search(file):
@@ -644,3 +679,4 @@ elif params['action'] == 'download':
 
 
 xbmcplugin.endOfDirectory(int(sys.argv[1]))  # send end of directory to XBMC
+

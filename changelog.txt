@@ -1,3 +1,7 @@
+1.9.6
+- add OS dependent extraction method (Windows fix) (wuff)
+- add more debug info (wuff)
+
 1.9.5
 - Adjust download function (wuff)
 - Update providers,readme and source link as per https://github.com/jarmo/service.subtitles.subscene/pull/10

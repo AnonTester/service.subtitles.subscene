@@ -1,14 +1,18 @@
-1.9.6
-- add OS dependent extraction method (Windows fix) (wuff)
-- add more debug info (wuff)
+1.9.7 (wuff)
+- add Android platform check to extraction method
+- add icon to addons.xml
 
-1.9.5
-- Adjust download function (wuff)
+1.9.6 (wuff)
+- add OS dependent extraction method (Windows fix)
+- add more debug info
+
+1.9.5 (wuff)
+- Adjust download function
 - Update providers,readme and source link as per https://github.com/jarmo/service.subtitles.subscene/pull/10
 
-1.9.4
-- Adjust windows/linux path when extracting on Kodi19 (wuff)
-- replace deprecated HTMLParser.unescape with html.unescape for Kodi19 (wuff)
+1.9.4 (wuff)
+- Adjust windows/linux path when extracting on Kodi19
+- replace deprecated HTMLParser.unescape with html.unescape for Kodi19
 
 1.9.3 (backport changes from foreignonly version)
 - Fix extracting archives on Kodi19 (wuff)

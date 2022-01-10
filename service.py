@@ -492,20 +492,25 @@ def download(link, episode=""):
             xbmc.sleep(500)
             if sys.version_info.major == 3:
                 log(__name__, "Checking '%s' for subtitle files to copy" % (local_tmp_file))
-                if sys.platform == "linux" or sys.platform == "linux2":
+                if sys.platform == "linux" or sys.platform == "linux2" and not 'ANDROID_ARGUMENT' in os.environ:
                     log(__name__, "Platform identified as Linux")
                     #Kodi on linux does not understand 'archive://' protocol
                     (dirs, files) = xbmcvfs.listdir('%s' % xbmcvfs.translatePath(local_tmp_file))
                 else:
                     log(__name__, "Platform identified as Non-Linux")
                     #Kodi on windows and possibly Android requires archive:// protocol, so testing both
+                    log(__name__, "Trying archive:\\\\")
                     (dirs, files) = xbmcvfs.listdir('archive:\\\\%s' % xbmcvfs.translatePath(urllib.parse.quote_plus(local_tmp_file)))
                     if len(files) == 0:
+                        log(__name__, "Trying directly")
                         (dirs, files) = xbmcvfs.listdir('%s' % xbmcvfs.translatePath(local_tmp_file))
+                    if len(files) == 0:
+                        log(__name__, "Trying zip://")
+                        (dirs, files) = xbmcvfs.listdir('zip://%s/' % urllib.parse.quote_plus(local_tmp_file))
                 for file in files:
                     dest = os.path.join(tempdir, file)
                     log(__name__, "=== Found subtitle file %s" % dest)
-                    if sys.platform == "linux" or sys.platform == "linux2":
+                    if sys.platform == "linux" or sys.platform == "linux2" and not 'ANDROID_ARGUMENT' in os.environ:
                         #Kodi on linux does not understand 'archive://' protocol
                         src = os.path.join(local_tmp_file, file)
                         log(__name__, "trying to copy '%s' to '%s'" % (src, dest))
@@ -523,11 +528,16 @@ def download(link, episode=""):
                             src = os.path.join(local_tmp_file, file)
                             log(__name__, "trying to copy '%s' to '%s'" % (src, dest))
                             if not xbmcvfs.copy(src, dest):
-                                log(__name__, "copying failed")
+                                #trying yet again
+                                src = 'zip://%s/' % urllib.parse.quote_plus(os.path.join(local_tmp_file, file))
+                                if not xbmcvfs.copy(src, dest):
+                                    log(__name__, "copying failed")
+                                else:
+                                    log(__name__, "copying succeeded using zip://")
                             else:
-                                log(__name__, "copying succeeded")
+                                log(__name__, "copying succeeded using directly")
                         else:
-                            log(__name__, "copying succeeded")
+                            log(__name__, "copying succeeded using archive:\\\\")
 
                     subtitle_list.append(dest)
             else:

@@ -1,3 +1,6 @@
+1.9.8 (wuff)
+- adjust Android platform check
+
 1.9.7 (wuff)
 - add Android platform check to extraction method
 - add icon to addons.xml

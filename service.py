@@ -490,14 +490,17 @@ def download(link, episode=""):
 
         if packed:
             xbmc.sleep(500)
+            if (sys.platform == "linux" or sys.platform == "linux2") and not 'ANDROID_ROOT' in list(os.environ.keys()):
+                platform="linux"
+                log(__name__, "Platform identified as Linux")
+            else:
+                platform="non-linux"
+                log(__name__, "Platform identified as Non-Linux")
             if sys.version_info.major == 3:
                 log(__name__, "Checking '%s' for subtitle files to copy" % (local_tmp_file))
-                if sys.platform == "linux" or sys.platform == "linux2" and not 'ANDROID_ARGUMENT' in os.environ:
-                    log(__name__, "Platform identified as Linux")
-                    #Kodi on linux does not understand 'archive://' protocol
+                if platform == "linux":
                     (dirs, files) = xbmcvfs.listdir('%s' % xbmcvfs.translatePath(local_tmp_file))
                 else:
-                    log(__name__, "Platform identified as Non-Linux")
                     #Kodi on windows and possibly Android requires archive:// protocol, so testing both
                     log(__name__, "Trying archive:\\\\")
                     (dirs, files) = xbmcvfs.listdir('archive:\\\\%s' % xbmcvfs.translatePath(urllib.parse.quote_plus(local_tmp_file)))
@@ -510,7 +513,7 @@ def download(link, episode=""):
                 for file in files:
                     dest = os.path.join(tempdir, file)
                     log(__name__, "=== Found subtitle file %s" % dest)
-                    if sys.platform == "linux" or sys.platform == "linux2" and not 'ANDROID_ARGUMENT' in os.environ:
+                    if platform == "linux":
                         #Kodi on linux does not understand 'archive://' protocol
                         src = os.path.join(local_tmp_file, file)
                         log(__name__, "trying to copy '%s' to '%s'" % (src, dest))

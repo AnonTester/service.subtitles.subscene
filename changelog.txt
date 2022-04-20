@@ -1,3 +1,7 @@
+1.9.9 (wuff)
+- adjust http user-agent
+- retry 5 times to download subtitles before giving up gracefully
+
 1.9.8 (wuff)
 - adjust Android platform check
 

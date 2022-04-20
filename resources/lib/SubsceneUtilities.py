@@ -84,8 +84,8 @@ subscene_start = time.time()
 
 def log(module, msg):
     global subscene_start
-    loglevel=xbmc.LOGDEBUG
-#    loglevel=xbmc.LOGWARNING
+#    loglevel=xbmc.LOGDEBUG
+    loglevel=xbmc.LOGWARNING
     if sys.version_info.major == 3:
         xbmc.log("### [%s] %f - %s" % (module, time.time() - subscene_start, msg,), level=loglevel)
     else:

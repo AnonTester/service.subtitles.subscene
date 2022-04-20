@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
 
 import os
+import traceback
 import sys
 import xbmc
+import time
 if sys.version_info.major == 3:
-    import urllib.request, urllib.parse, urllib.error
+    import urllib.request
+    import urllib.parse
+    import urllib.error
 else:
     import urllib
     import urllib2
@@ -44,8 +48,8 @@ from SubsceneUtilities import log, geturl, get_language_codes, subscene_language
 main_url = "https://subscene.com"
 
 aliases = {
-    "marvels agents of shield" : "Agents of Shield",
-    "marvels agents of s.h.i.e.l.d" : "Agents of Shield",
+    "marvels agents of shield": "Agents of Shield",
+    "marvels agents of s.h.i.e.l.d": "Agents of Shield",
     "marvels jessica jones": "Jessica Jones",
     "dcs legends of tomorrow": "Legends of Tomorrow"
 }
@@ -156,7 +160,7 @@ def find_tv_show_season(content, tvshow, season):
         import html
     else:
         html = HTMLParser.HTMLParser()
-        
+
     for matches in re.finditer(movie_season_pattern, content, re.IGNORECASE | re.DOTALL):
         found_title = matches.group('title')
         found_title = html.unescape(found_title)
@@ -302,9 +306,9 @@ def search_movie(title, year, languages, filename):
 
     log(__name__, "Search movie = %s" % title)
     if sys.version_info.major == 3:
-        url = main_url + "/subtitles/searchbytitle?query="+ urllib.parse.quote_plus(title)
+        url = main_url + "/subtitles/searchbytitle?query=" + urllib.parse.quote_plus(title)
     else:
-        url = main_url + "/subtitles/searchbytitle?query="+ urllib.quote_plus(title)
+        url = main_url + "/subtitles/searchbytitle?query=" + urllib.quote_plus(title)
     content, response_url = geturl(url)
 
     if content is not None:
@@ -433,46 +437,84 @@ def download(link, episode=""):
             postparams = urllib.urlencode(
                 {'__EVENTTARGET': 's$lc$bcr$downloadLink', '__EVENTARGUMENT': '', '__VIEWSTATE': viewstate,
                  '__PREVIOUSPAGE': previouspage, 'subtitleId': subtitleid, 'typeId': typeid, 'filmId': filmid})
-
-        useragent = ("User-Agent=Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.2.3) "
-                       "Gecko/20100401 Firefox/3.6.3 ( .NET CLR 3.5.30729)")
+#        useragent = ("User-Agent=Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.2.3) "
+#                     "Gecko/20100401 Firefox/3.6.3 ( .NET CLR 3.5.30729)")
+#        useragent = ("User-Agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.89 Safari/537.36")
+        useragent = ("Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/99.0")
         headers = {'User-Agent': useragent, 'Referer': link}
         log(__name__, "Fetching subtitles using url '%s' with referer header '%s' and post parameters '%s'" % (
             downloadlink, link, postparams))
-        if sys.version_info.major == 3:
-            request = urllib.request.Request(downloadlink, postparams, headers)
-            response = urllib.request.urlopen(request)
-        else:
-            request = urllib2.Request(downloadlink, postparams, headers)
-            response = urllib2.urlopen(request)
-
-        if response.getcode() != 200:
-            log(__name__, "Failed to download subtitle file")
-            return subtitle_list
 
         local_tmp_file = os.path.join(tempdir, "subscene.xxx")
+
+        time_interval = 3
+        num_of_retries = 5
+        if sys.version_info.major == 3:
+            request = urllib.request.Request(downloadlink, postparams, headers)
+            for _ in range(num_of_retries):
+                try:
+                    response = urllib.request.urlopen(request)
+                except:
+                    typ, val, tb = sys.exc_info()
+                    log(__name__, traceback.format_exception(typ, val, tb))
+                    num_of_retries -= 1
+                    # If there aren't any retries - exit loop and raise error
+                    if not num_of_retries:
+                        log(__name__, "Download failure, giving up")
+                        pass
+                    log(__name__, "Download failure, %s attempts left" % num_of_retries)
+                    time.sleep(time_interval)
+                else:
+                    local_tmp_file = os.path.join(tempdir, "subscene.xxx")
+                    log(__name__, "Saving downloaded file to '%s'" % local_tmp_file)
+                    local_file_handle = xbmcvfs.File(local_tmp_file, "w")
+                    local_file_handle.write(bytearray(response.read()))
+                    local_file_handle.close()
+                    break
+            else:
+                log(__name__, "Download failure, returning empty subtitle list")
+                return subtitle_list
+        else:
+            request = urllib2.Request(downloadlink, postparams, headers)
+            for _ in range(num_of_retries):
+                try:
+                    response = urllib2.urlopen(request)
+                except urllib2.URLError:
+                    typ, val, tb = sys.exc_info()
+                    log(__name__, traceback.format_exception(typ, val, tb))
+                    num_of_retries -= 1
+                    # If there aren't any retries - exit loop and raise error
+                    if not num_of_retries:
+                        log(__name__, "Download failure, giving up")
+                        raise
+                    log(__name__, "Download failure, %s attempts left" % num_of_retries)
+                    time.sleep(time_interval)
+                else:
+                    log(__name__, "Saving downloaded file to '%s'" % local_tmp_file)
+                    local_file_handle = xbmcvfs.File(local_tmp_file, "wb")
+                    local_file_handle.write(response.read())
+                    local_file_handle.close()
+                    break
+            else:
+                raise
+
+        if response is not None and response.getcode() != 200:
+            log(__name__, "Failed to download subtitle file, HTTP error %s" % response.getcode())
+            return subtitle_list
+
         packed = False
 
         try:
-            log(__name__, "Saving subtitles to '%s'" % local_tmp_file)
-            if sys.version_info.major == 3:
-                local_file_handle = xbmcvfs.File(local_tmp_file, "w")
-                local_file_handle.write(bytearray(response.read()))
-            else:
-                local_file_handle = xbmcvfs.File(local_tmp_file, "wb")
-                local_file_handle.write(response.read())
-            local_file_handle.close()
-
             log(__name__, "Checking archive type")
             # Check archive type (rar/zip/else) through the file header (rar=Rar!, zip=PK)
             myfile = xbmcvfs.File(local_tmp_file, "rb")
-            myfile.seek(0,0)
+            myfile.seek(0, 0)
             if myfile.read(1) == 'R':
                 typeid = "rar"
                 packed = True
                 log(__name__, "Discovered RAR Archive")
             else:
-                myfile.seek(0,0)
+                myfile.seek(0, 0)
                 if myfile.read(1) == 'P':
                     typeid = "zip"
                     packed = True
@@ -491,17 +533,17 @@ def download(link, episode=""):
         if packed:
             xbmc.sleep(500)
             if (sys.platform == "linux" or sys.platform == "linux2") and not 'ANDROID_ROOT' in list(os.environ.keys()):
-                platform="linux"
+                platform = "linux"
                 log(__name__, "Platform identified as Linux")
             else:
-                platform="non-linux"
+                platform = "non-linux"
                 log(__name__, "Platform identified as Non-Linux")
             if sys.version_info.major == 3:
-                log(__name__, "Checking '%s' for subtitle files to copy" % (local_tmp_file))
+                log(__name__, "Checking '%s' for subtitle files to copy" % local_tmp_file)
                 if platform == "linux":
                     (dirs, files) = xbmcvfs.listdir('%s' % xbmcvfs.translatePath(local_tmp_file))
                 else:
-                    #Kodi on windows and possibly Android requires archive:// protocol, so testing both
+                    # Kodi on windows and possibly Android requires archive:// protocol, so testing both
                     log(__name__, "Trying archive:\\\\")
                     (dirs, files) = xbmcvfs.listdir('archive:\\\\%s' % xbmcvfs.translatePath(urllib.parse.quote_plus(local_tmp_file)))
                     if len(files) == 0:
@@ -514,7 +556,7 @@ def download(link, episode=""):
                     dest = os.path.join(tempdir, file)
                     log(__name__, "=== Found subtitle file %s" % dest)
                     if platform == "linux":
-                        #Kodi on linux does not understand 'archive://' protocol
+                        # Kodi on linux does not understand 'archive://' protocol
                         src = os.path.join(local_tmp_file, file)
                         log(__name__, "trying to copy '%s' to '%s'" % (src, dest))
                         if not xbmcvfs.copy(src, dest):
@@ -522,16 +564,16 @@ def download(link, episode=""):
                         else:
                             log(__name__, "copying succeeded")
                     else:
-                        #Kodi on windows and possibly Android requires archive:// protocol, so testing both
+                        # Kodi on windows and possibly Android requires archive:// protocol, so testing both
                         src = xbmcvfs.translatePath(os.path.join("archive:\\\\%s" % urllib.parse.quote_plus(local_tmp_file), file))
                         log(__name__, "trying to copy '%s' to '%s'" % (src, dest))
                         if not xbmcvfs.copy(src, dest):
                             log(__name__, "copying failed")
-                            #trying again
+                            # trying again
                             src = os.path.join(local_tmp_file, file)
                             log(__name__, "trying to copy '%s' to '%s'" % (src, dest))
                             if not xbmcvfs.copy(src, dest):
-                                #trying yet again
+                                # trying yet again
                                 src = 'zip://%s/' % urllib.parse.quote_plus(os.path.join(local_tmp_file, file))
                                 if not xbmcvfs.copy(src, dest):
                                     log(__name__, "copying failed")
@@ -551,7 +593,7 @@ def download(link, episode=""):
                     if os.path.splitext(file)[1] in exts:
                         log(__name__, "=== Found subtitle file %s" % file)
                         subtitle_list.append(file)
-            
+
         episode_pattern = None
         if episode != '':
             episode_pattern = re.compile(get_episode_pattern(episode), re.IGNORECASE)
@@ -614,7 +656,7 @@ def get_params():
     if len(paramstring) >= 2:
         params = paramstring
         cleanedparams = params.replace('?', '')
-        if (params[len(params) - 1] == '/'):
+        if params[len(params) - 1] == '/':
             params = params[0:len(params) - 2]
         pairsofparams = cleanedparams.split('&')
         param = {}

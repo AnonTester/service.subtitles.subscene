@@ -1,3 +1,6 @@
+1.9.10 (wuff)
+- add trailing slash and zip protocol to linux platform extract (for arm?)
+
 1.9.9 (wuff)
 - adjust http user-agent
 - retry 5 times to download subtitles before giving up gracefully

@@ -542,6 +542,12 @@ def download(link, episode=""):
                 log(__name__, "Checking '%s' for subtitle files to copy" % local_tmp_file)
                 if platform == "linux":
                     (dirs, files) = xbmcvfs.listdir('%s' % xbmcvfs.translatePath(local_tmp_file))
+                    if len(files) == 0:
+                        log(__name__, "Trying trailing slash")
+                        (dirs, files) = xbmcvfs.listdir('%s/' % xbmcvfs.translatePath(local_tmp_file))
+                    if len(files) == 0:
+                        log(__name__, "Trying zip://")
+                        (dirs, files) = xbmcvfs.listdir('zip://%s/' % urllib.parse.quote_plus(local_tmp_file))
                 else:
                     # Kodi on windows and possibly Android requires archive:// protocol, so testing both
                     log(__name__, "Trying archive:\\\\")

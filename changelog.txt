@@ -1,3 +1,6 @@
+1.9.11 (wuff)
+- add a lot of debug logging for tvshows
+
 1.9.10 (wuff)
 - add trailing slash and zip protocol to linux platform extract (for arm?)
 

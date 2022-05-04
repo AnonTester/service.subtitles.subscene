@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import os, sys
+import sys
 import gzip
 import time
 if sys.version_info.major == 3:
@@ -102,7 +102,8 @@ def geturl(url, cookies=None):
         request.add_header('Accept-encoding', 'gzip')
         if cookies:
             request.add_header('Cookie', cookies)
-        request.add_header('User-Agent', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.11; rv:41.0) Gecko/20100101 Firefox/41.0')
+        #request.add_header('User-Agent', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.11; rv:41.0) Gecko/20100101 Firefox/41.0')
+        request.add_header('User-Agent', 'Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/99.0')
         if sys.version_info.major == 3:
             response = urllib.request.urlopen(request)
         else:
@@ -120,13 +121,17 @@ def geturl(url, cookies=None):
         else:
             content = response.read()
         log(__name__, "read done")
+        log(__name__, "content:\n%s" % content)
         # Fix non-unicode characters in movie titles
         strip_unicode = re.compile("([^-_a-zA-Z0-9!@#%&=,/'\";:~`\$\^\*\(\)\+\[\]\.\{\}\|\?<>\\]+|[^\s]+)")
         content = strip_unicode.sub('', content)
+        log(__name__, "unicode-stripped content:\n%s" % content)
         return_url = response.geturl()
+        log(__name__, "return_url:\n%s" % return_url)
         log(__name__, "fetching done")
     except:
         log(__name__, "Failed to get url: %s" % url)
         content = None
         return_url = None
     return content, return_url
+

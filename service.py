@@ -260,13 +260,17 @@ def getallsubs(url, allowed_languages, filename="", episode=""):
         language_info = subscene_languages[languagefound]
 
         if language_info and language_info['3let'] in allowed_languages:
+            log(__name__, 'Found subtitle in allowed language')
             link = main_url + matches.group('link')
             subtitle_name = matches.group('filename').strip()
+            log(__name__, 'Subtitle %s %s' % (link, subtitle_name))
             hearing_imp = (matches.group('hiclass') == "a41")
             rating = '0'
             if matches.group('quality') == "bad-icon":
+                log(__name__, 'Subtitle classed as bad, ignoring')
                 continue
             if matches.group('quality') == "positive-icon":
+                log(__name__, 'Subtitle classed as good')
                 rating = '5'
 
             comment = re.sub("[\r\n\t]+", " ", html.unescape(matches.group('comment').strip()))
@@ -276,7 +280,7 @@ def getallsubs(url, allowed_languages, filename="", episode=""):
                 sync = True
 
             if episode != "":
-                # log(__name__, "match: "+subtitle_name)
+                log(__name__, "match: "+subtitle_name)
                 if episode_regex.search(subtitle_name):
                     subtitles.append({'rating': rating, 'filename': subtitle_name, 'sync': sync, 'link': link,
                                       'lang': language_info, 'hearing_imp': hearing_imp, 'comment': comment})
@@ -292,6 +296,7 @@ def getallsubs(url, allowed_languages, filename="", episode=""):
     subtitles.sort(key=lambda x: [not x['sync'], not x['lang']['name'] == PreferredSub])
     for s in subtitles:
         append_subtitle(s)
+    log(__name__, 'All subtitles: %s' % subtitles)
 
 
 def prepare_search_string(s):
@@ -740,4 +745,5 @@ elif params['action'] == 'download':
 
 
 xbmcplugin.endOfDirectory(int(sys.argv[1]))  # send end of directory to XBMC
+
 

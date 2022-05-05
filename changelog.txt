@@ -1,3 +1,6 @@
+1.9.12 (wuff)
+- add settings option to set debug level (default info)
+
 1.9.11 (wuff)
 - add a lot of debug logging for tvshows
 

@@ -207,6 +207,8 @@ def append_subtitle(item):
 
     listitem.setProperty("sync", 'true' if item["sync"] else 'false')
     listitem.setProperty("hearing_imp", 'true' if item["hearing_imp"] else 'false')
+    # ForeignOnly change
+    # listitem.setProperty("forced", 'true')
 
     # below arguments are optional, it can be used to pass any info needed in download function
     # anything after "action=download&" will be sent to addon once user clicks listed subtitle to downlaod
@@ -235,8 +237,12 @@ def getallsubs(url, allowed_languages, filename="", episode=""):
         else:
             xbmc.executebuiltin((u'Notification(%s,%s)' % (__scriptname__, __language__(32004))).encode('utf-8'))
         return
+    # All subs of language
     log(__name__, 'LanguageFilter='+','.join(codes))
     content, response_url = geturl(url, 'LanguageFilter='+','.join(codes))
+    # ForeignOnly change
+    # log(__name__, 'ForeignOnly=True;LanguageFilter='+','.join(codes))
+    # content, response_url = geturl(url, 'ForeignOnly=True;LanguageFilter='+','.join(codes))
 
     if content is None:
         return
@@ -260,7 +266,6 @@ def getallsubs(url, allowed_languages, filename="", episode=""):
         language_info = subscene_languages[languagefound]
 
         if language_info and language_info['3let'] in allowed_languages:
-            log(__name__, 'Found subtitle in allowed language')
             link = main_url + matches.group('link')
             subtitle_name = matches.group('filename').strip()
             log(__name__, 'Subtitle %s %s' % (link, subtitle_name))
